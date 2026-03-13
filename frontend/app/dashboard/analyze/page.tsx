@@ -17,6 +17,7 @@ import Link from "next/link";
 import DebatePanel from "@/components/DebatePanel";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AudioPanel from "@/components/AudioPanel";
+import HeatmapTimeline from "@/components/HeatmapTimeline";
 
 type AnalysisResult = {
   verdict: "REAL" | "FAKE";
@@ -27,7 +28,7 @@ type AnalysisResult = {
 };
 
 export default function AnalyzePage() {
-  const [activeTab, setActiveTab] = useState<"video" | "audio">("video");
+  const [activeTab, setActiveTab] = useState<"video" | "audio" | "heatmap">("video");
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -141,7 +142,7 @@ export default function AnalyzePage() {
 
       {/* Tab switcher */}
         <div className="flex gap-2 mb-8 bg-[#111] border border-white/10 rounded-2xl p-1 w-fit">
-          {(["video", "audio"] as const).map((tab) => (
+          {(["video", "audio", "heatmap"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -151,7 +152,7 @@ export default function AnalyzePage() {
                   : "text-gray-500 hover:text-gray-300"
               }`}
             >
-              {tab === "video" ? "🎬 Video" : "🎙️ Audio"}
+              {tab === "video" ? "🎬 Video" : tab === "audio" ? "🎙️ Audio" : "🔥 Heatmap"}
             </button>
           ))}
         </div>
@@ -159,6 +160,10 @@ export default function AnalyzePage() {
       {activeTab === "audio" ? (
         <ErrorBoundary>
           <AudioPanel />
+        </ErrorBoundary>
+      ) : activeTab === "heatmap" ? (
+        <ErrorBoundary>
+          <HeatmapTimeline />
         </ErrorBoundary>
       ) : (
       <AnimatePresence mode="wait">
