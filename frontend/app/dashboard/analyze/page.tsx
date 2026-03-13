@@ -18,6 +18,7 @@ import {
   Activity,
   Fingerprint,
   Wind,
+  Clock,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -54,6 +55,8 @@ type AudioResult = {
   speaker_verification: { similarity: number; score: number };
   breathing: { count: number; score: number };
   warning: string;
+  timeline: { start: number; end: number; fake_prob: number; real_prob: number; label: string }[];
+  duration: number;
 };
 
 /* ── Helpers ── */
@@ -73,6 +76,12 @@ function formatFileSize(bytes: number) {
 
 function pct(v: number) {
   return `${(v * 100).toFixed(1)}%`;
+}
+
+function fmtTime(sec: number) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 /* ── Component ── */
@@ -359,6 +368,82 @@ export default function AnalyzePage() {
             </div>
 
             {/* Voice Analysis Row */}
+
+            {/* Audio Timeline */}
+            {audioResult.timeline && audioResult.timeline.length > 0 && (
+              <div className="bg-[#111] border border-white/10 rounded-3xl p-8 mb-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <Clock className="w-5 h-5 text-cyan-400" />
+                  <h3 className="text-lg font-bold text-white">Audio Timeline</h3>
+                  <span className="text-xs text-gray-500 ml-auto">{fmtTime(audioResult.duration || audioResult.timeline[audioResult.timeline.length - 1].end)}</span>
+                </div>
+
+                {/* Timeline bar */}
+                <div className="relative">
+                  <div className="flex rounded-xl overflow-hidden h-10 bg-white/5">
+                    {audioResult.timeline.map((seg, i) => {
+                      const total = audioResult.duration || audioResult.timeline[audioResult.timeline.length - 1].end;
+                      const widthPct = ((seg.end - seg.start) / total) * 100;
+                      return (
+                        <div
+                          key={i}
+                          className={`relative group h-full border-r border-black/20 last:border-r-0 transition-opacity hover:opacity-80 ${
+                            seg.label === "fake"
+                              ? "bg-gradient-to-b from-red-500/80 to-red-600/60"
+                              : "bg-gradient-to-b from-green-500/80 to-green-600/60"
+                          }`}
+                          style={{ width: `${widthPct}%`, minWidth: "2px" }}
+                        >
+                          {/* Tooltip */}
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black/90 border border-white/10 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                            <p className="text-white font-medium">{fmtTime(seg.start)} - {fmtTime(seg.end)}</p>
+                            <p className={seg.label === "fake" ? "text-red-400" : "text-green-400"}>
+                              {seg.label === "fake" ? "Fake" : "Real"}: {pct(seg.fake_prob)} fake
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Time labels */}
+                  <div className="flex justify-between mt-2 text-[10px] text-gray-500">
+                    <span>0:00</span>
+                    {audioResult.duration > 10 && <span>{fmtTime(audioResult.duration / 2)}</span>}
+                    <span>{fmtTime(audioResult.duration || audioResult.timeline[audioResult.timeline.length - 1].end)}</span>
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="flex items-center gap-6 mt-4 text-xs text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-sm bg-red-500/80" />
+                    <span>Fake / AI Generated</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-sm bg-green-500/80" />
+                    <span>Authentic / Real</span>
+                  </div>
+                  <span className="ml-auto text-gray-600">Hover segments for details</span>
+                </div>
+
+                {/* Chunk summary */}
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="text-center p-3 rounded-xl bg-red-500/5 border border-red-500/20">
+                    <p className="text-xl font-bold text-red-400">
+                      {audioResult.timeline.filter(s => s.label === "fake").length}
+                    </p>
+                    <p className="text-xs text-gray-500">Fake Segments</p>
+                  </div>
+                  <div className="text-center p-3 rounded-xl bg-green-500/5 border border-green-500/20">
+                    <p className="text-xl font-bold text-green-400">
+                      {audioResult.timeline.filter(s => s.label === "real").length}
+                    </p>
+                    <p className="text-xs text-gray-500">Real Segments</p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="grid md:grid-cols-3 gap-4 mb-6">
               <div className="bg-[#111] border border-white/10 rounded-2xl p-5 text-center">
                 <Wind className="w-5 h-5 text-blue-400 mx-auto mb-2" />
