@@ -61,8 +61,8 @@ type AudioResult = {
 
 /* ── Helpers ── */
 
-const AUDIO_ACCEPT = ".mp3,.wav,.flac,.ogg,.m4a,.aac,.wma,.webm";
-const AUDIO_EXTS = new Set(["mp3", "wav", "flac", "ogg", "m4a", "aac", "wma", "webm"]);
+const AUDIO_ACCEPT = ".mp3,.wav,.flac,.ogg,.m4a,.aac,.wma,.webm,.mpeg,.mpg";
+const AUDIO_EXTS = new Set(["mp3", "wav", "flac", "ogg", "m4a", "aac", "wma", "webm", "mpeg", "mpg"]);
 
 function isAudioFile(f: File) {
   const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
