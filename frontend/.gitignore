@@ -34,3 +34,7 @@ pnpm-debug.log*
 .claude/
 tmp/
 *.tmp
+
+acontext.pdf
+context.docx
+context.md

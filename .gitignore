@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+
+# Model weights (downloaded at runtime from HuggingFace)
+backend/model_cache/
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Environment secrets
+backend/.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
