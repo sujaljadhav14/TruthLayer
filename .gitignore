@@ -14,10 +14,24 @@ backend/model_cache/
 
 # Environment secrets
 backend/.env
+frontend/.env.local
+
+# Temp / uploads
+backend/tmp/
+backend/uploads/
+*.tmp
 
 # OS
 .DS_Store
 Thumbs.db
 
+# IDE
+.vscode/
+.idea/
+
 # Claude Code
 .claude/
+
+# Planning docs (not for repo)
+IMPLEMENTATION_PLAN.md
+manipulation_workflow.md

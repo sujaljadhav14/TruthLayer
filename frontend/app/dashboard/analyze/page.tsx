@@ -14,6 +14,9 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import DebatePanel from "@/components/DebatePanel";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import AudioPanel from "@/components/AudioPanel";
 
 type AnalysisResult = {
   verdict: "REAL" | "FAKE";
@@ -24,6 +27,7 @@ type AnalysisResult = {
 };
 
 export default function AnalyzePage() {
+  const [activeTab, setActiveTab] = useState<"video" | "audio">("video");
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -135,6 +139,28 @@ export default function AnalyzePage() {
         </div>
       </div>
 
+      {/* Tab switcher */}
+        <div className="flex gap-2 mb-8 bg-[#111] border border-white/10 rounded-2xl p-1 w-fit">
+          {(["video", "audio"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-2 rounded-xl text-sm font-bold capitalize transition-all ${
+                activeTab === tab
+                  ? "bg-white/10 text-white"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              {tab === "video" ? "🎬 Video" : "🎙️ Audio"}
+            </button>
+          ))}
+        </div>
+
+      {activeTab === "audio" ? (
+        <ErrorBoundary>
+          <AudioPanel />
+        </ErrorBoundary>
+      ) : (
       <AnimatePresence mode="wait">
         {/* ─── RESULT VIEW ─── */}
         {result ? (
@@ -274,8 +300,13 @@ export default function AnalyzePage() {
               </div>
             </div>
 
+            {/* AI Debate Panel */}
+            <ErrorBoundary>
+              <DebatePanel analysisData={result} />
+            </ErrorBoundary>
+
             {/* Actions */}
-            <div className="flex gap-4">
+            <div className="flex gap-4 mt-6">
               <button
                 onClick={resetAnalysis}
                 className="flex-1 bg-[#111] border border-white/10 text-white py-4 rounded-2xl font-medium hover:bg-[#1a1a1a] transition-colors"
@@ -431,6 +462,7 @@ export default function AnalyzePage() {
           </motion.div>
         )}
       </AnimatePresence>
+      )}
     </div>
   );
 }

@@ -19,7 +19,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Use absolute path so .env is found regardless of working directory
+load_dotenv(Path(__file__).parent / ".env")
 
 # Must be set before any huggingface_hub import
 os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
@@ -50,6 +51,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Register new routers (additive only) ────────────────────────────────
+from ai_debate.routes import router as debate_router
+from audio_analyzer.routes import router as audio_router
+
+app.include_router(debate_router, prefix="/api")
+app.include_router(audio_router, prefix="/api")
 
 
 def download_weights_if_needed():

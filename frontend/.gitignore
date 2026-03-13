@@ -38,3 +38,7 @@ tmp/
 acontext.pdf
 context.docx
 context.md
+# clerk configuration (can include secrets)
+/.clerk/
+
+manipulation_workflow.md
