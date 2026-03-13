@@ -3,18 +3,28 @@
 import { motion } from "motion/react";
 import { ArrowRight, FileSearch, History, Zap, ShieldCheck, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 
 export default function DashboardHome() {
+  const { user } = useUser();
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  };
+
   return (
     <div className="max-w-5xl mx-auto">
       {/* Greeting Section */}
       <div className="text-center mb-12">
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-3xl font-bold text-white mb-2 flex items-center justify-center gap-2"
         >
-          Good Morning, SUJAL! 👋
+          {getGreeting()}, {user?.firstName ?? "User"}!
         </motion.h1>
         <motion.p 
           initial={{ opacity: 0 }}

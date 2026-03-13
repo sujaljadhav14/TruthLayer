@@ -2,18 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  ScanEye, 
-  Home, 
-  UploadCloud, 
-  FileSearch, 
-  History, 
+import { useUser, useClerk } from "@clerk/nextjs";
+import {
+  ScanEye,
+  Home,
+  UploadCloud,
+  FileSearch,
+  History,
   AlertTriangle,
-  BookOpen
+  BookOpen,
+  LogOut
 } from "lucide-react";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { user } = useUser();
+  const { signOut } = useClerk();
 
   const navItems = [
     { name: "Home", href: "/dashboard", icon: Home },
@@ -43,8 +47,8 @@ export default function Sidebar() {
               key={item.name}
               href={item.href}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                isActive 
-                  ? "bg-green-500/10 text-green-500 border border-green-500/20" 
+                isActive
+                  ? "bg-green-500/10 text-green-500 border border-green-500/20"
                   : "text-gray-400 hover:bg-white/5 hover:text-white"
               }`}
             >
@@ -66,16 +70,35 @@ export default function Sidebar() {
         </Link>
       </div>
 
-      <div className="p-4 border-t border-white/5">
+      <div className="p-4 border-t border-white/5 space-y-3">
         <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-[#111]">
-          <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 font-bold text-sm border border-green-500/30">
-            S
-          </div>
-          <div className="overflow-hidden">
-            <p className="text-sm font-bold text-white truncate">SUJAL</p>
-            <p className="text-xs text-gray-500 truncate">sujal.jadhav2627@gmail.com</p>
+          {user?.imageUrl ? (
+            <img
+              src={user.imageUrl}
+              alt="Profile"
+              className="w-8 h-8 rounded-full border border-green-500/30"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 font-bold text-sm border border-green-500/30">
+              {user?.firstName?.[0] ?? "?"}
+            </div>
+          )}
+          <div className="overflow-hidden flex-1">
+            <p className="text-sm font-bold text-white truncate">
+              {user?.fullName ?? "User"}
+            </p>
+            <p className="text-xs text-gray-500 truncate">
+              {user?.primaryEmailAddress?.emailAddress ?? ""}
+            </p>
           </div>
         </div>
+        <button
+          onClick={() => signOut({ redirectUrl: "/" })}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-colors cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </button>
       </div>
     </aside>
   );
