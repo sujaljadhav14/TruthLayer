@@ -258,3 +258,73 @@ div[class*="cl-internal"][style*="background: rgb(249"] {
 .cl-footer {
   background: transparent !important;
 }
+
+/* ===== CHANGE 3: Hover + transition effects on ALL buttons/links ===== */
+
+/* Global: smooth transition on every button and link */
+button,
+a[href] {
+  transition: all 0.3s ease;
+}
+
+/* Green primary buttons — lift + green glow on hover */
+.btn-green {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(0);
+  box-shadow: 0 0 0 rgba(34, 197, 94, 0);
+}
+
+.btn-green:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
+  background-color: #16a34a;
+}
+
+/* Outline / secondary buttons — lift + subtle white glow on hover */
+.btn-outline {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(0);
+}
+
+.btn-outline:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(255, 255, 255, 0.15);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Navbar auth buttons — scale + glow on hover */
+.btn-nav {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-nav:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.35);
+}
+
+/* ===== CHANGE 4: Click press effect on ALL buttons ===== */
+button:active,
+a[href]:active,
+.btn-green:active,
+.btn-outline:active,
+.btn-nav:active {
+  transform: translateY(0px) scale(0.97) !important;
+  transition-duration: 0.1s !important;
+}
+
+/* ===== Performance: GPU-hint animated layers ===== */
+.auth-orb-1,
+.auth-orb-2,
+.auth-orb-3,
+.glass-card {
+  will-change: transform, opacity;
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
