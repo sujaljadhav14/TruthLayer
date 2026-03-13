@@ -1,10 +1,22 @@
+# Shared
 fastapi>=0.110.0
-uvicorn>=0.29.0
+uvicorn[standard]>=0.29.0
 python-multipart>=0.0.9
 python-dotenv>=1.0.0
+numpy>=1.24.0
 torch>=2.0.0
+
+# Video deepfake detection
 torchvision>=0.15.0
 opencv-python>=4.8.0
-numpy>=1.24.0
 Pillow>=9.0.0
 huggingface_hub>=0.23.0
+
+# Audio deepfake detection
+torchaudio
+transformers
+librosa
+scipy
+ffmpeg-python
+webrtcvad
+resemblyzer

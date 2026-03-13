@@ -1,6 +1,6 @@
 """
-TruthLens — DeepFake Detection API
-FastAPI server wrapping the ResNext50+LSTM deepfake detector.
+TruthLens — Unified DeepFake Detection API (Video + Audio)
+FastAPI server combining ResNext50+LSTM video detector and audio deepfake detector.
 
 Run:
     cd backend
@@ -9,10 +9,13 @@ Run:
 
 The model weights (~226 MB) are downloaded automatically from HuggingFace
 on first startup and cached in backend/model_cache/.
+FFmpeg is required for audio analysis (install from https://ffmpeg.org).
 """
 
 import os
 import sys
+import uuid
+import glob
 import tempfile
 import shutil
 from pathlib import Path
@@ -21,23 +24,46 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ── Ensure FFmpeg is on PATH (winget installs to a deep path) ───────────
+def _add_ffmpeg_to_path():
+    """Find FFmpeg installed by winget and add its bin/ dir to PATH."""
+    if shutil.which("ffmpeg"):
+        return  # already accessible
+    winget_pkgs = os.path.expanduser(
+        "~/AppData/Local/Microsoft/WinGet/Packages"
+    )
+    pattern = os.path.join(winget_pkgs, "Gyan.FFmpeg*", "ffmpeg*", "bin")
+    matches = glob.glob(pattern)
+    if matches:
+        os.environ["PATH"] = matches[0] + os.pathsep + os.environ.get("PATH", "")
+        print(f"Added FFmpeg to PATH: {matches[0]}")
+
+_add_ffmpeg_to_path()
+
 # Must be set before any huggingface_hub import
 os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 # ── Globals (loaded once at startup) ────────────────────────────────────
-MODEL = None
-PROCESSOR = None
+# Video globals
+VIDEO_MODEL = None
+VIDEO_PROCESSOR = None
 TORCH_MOD = None
 F_MODULE = None
+
+# Audio globals
+AUDIO_DETECTOR = None
 
 BACKEND_DIR = Path(__file__).parent
 MODEL_CACHE_DIR = BACKEND_DIR / "model_cache"
 WEIGHTS_FILE = "model_87_acc_20_frames_final_data.pt"
+AUDIO_UPLOAD_DIR = BACKEND_DIR / "audio" / "uploads"
+AUDIO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="TruthLens DeepFake Detection API")
 
@@ -52,6 +78,7 @@ app.add_middleware(
 )
 
 
+# ── Video model helpers ─────────────────────────────────────────────────
 def download_weights_if_needed():
     """Download the .pt weights file from HuggingFace if not cached locally."""
     weights_path = MODEL_CACHE_DIR / WEIGHTS_FILE
@@ -65,7 +92,7 @@ def download_weights_if_needed():
     MODEL_ID = os.getenv("MODEL_ID", "tayyabimam/Deepfake")
 
     if not HF_TOKEN:
-        sys.exit("HF_TOKEN not set. Add it to backend/.env")
+        raise RuntimeError("HF_TOKEN not set. Add it to backend/.env")
 
     print(f"Downloading model weights from {MODEL_ID} ...")
     MODEL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -80,11 +107,11 @@ def download_weights_if_needed():
     return Path(downloaded)
 
 
-def load_model_once():
-    """Load the detection model and video processor into globals."""
-    global MODEL, PROCESSOR, TORCH_MOD, F_MODULE
+def load_video_model():
+    """Load the video detection model and processor into globals."""
+    global VIDEO_MODEL, VIDEO_PROCESSOR, TORCH_MOD, F_MODULE
 
-    if MODEL is not None:
+    if VIDEO_MODEL is not None:
         return
 
     import torch
@@ -93,38 +120,72 @@ def load_model_once():
     TORCH_MOD = torch
     F_MODULE = F
 
-    # Download weights
     weights_path = download_weights_if_needed()
 
-    # Load model architecture
     from model.detector import DeepFakeDetector
 
-    MODEL = DeepFakeDetector(num_classes=2)
-    MODEL.load_state_dict(
+    VIDEO_MODEL = DeepFakeDetector(num_classes=2)
+    VIDEO_MODEL.load_state_dict(
         torch.load(str(weights_path), map_location=torch.device("cpu"))
     )
-    MODEL.eval()
-    print("Model loaded successfully!")
+    VIDEO_MODEL.eval()
+    print("Video model loaded successfully!")
 
-    # Load processor
     from model.processor import VideoProcessor
 
-    PROCESSOR = VideoProcessor()
+    VIDEO_PROCESSOR = VideoProcessor()
     print("Video processor ready!")
 
 
+# ── Audio model helpers ─────────────────────────────────────────────────
+def load_audio_model():
+    """Load the audio deepfake detector into globals."""
+    global AUDIO_DETECTOR
+
+    if AUDIO_DETECTOR is not None:
+        return
+
+    # Add audio/ to Python path so the import works
+    audio_dir = str(BACKEND_DIR / "audio")
+    if audio_dir not in sys.path:
+        sys.path.insert(0, audio_dir)
+
+    from audio_deepfake_detector import DeepfakeDetector
+
+    AUDIO_DETECTOR = DeepfakeDetector()
+    print("Audio deepfake detector loaded successfully!")
+
+
+# ── Startup ─────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup_event():
-    print("Loading deepfake detection model...")
-    load_model_once()
+    print("Loading deepfake detection models...")
+    try:
+        load_video_model()
+        print("Video model ready!")
+    except Exception as e:
+        print(f"WARNING: Video model failed to load: {e}")
+        print("Video analysis will be unavailable. Audio analysis will still work.")
+    try:
+        load_audio_model()
+        print("Audio model ready!")
+    except Exception as e:
+        print(f"WARNING: Audio model failed to load: {e}")
+        print("Audio analysis will be unavailable.")
     print("Server ready!")
 
 
+# ── Health ──────────────────────────────────────────────────────────────
 @app.get("/health")
 async def health():
-    return {"status": "ok", "model_loaded": MODEL is not None}
+    return {
+        "status": "ok",
+        "video_model_loaded": VIDEO_MODEL is not None,
+        "audio_model_loaded": AUDIO_DETECTOR is not None,
+    }
 
 
+# ── Video analysis ──────────────────────────────────────────────────────
 @app.post("/analyze")
 async def analyze_video(file: UploadFile = File(...)):
     """Accept a video upload, run deepfake detection, return verdict + scores."""
@@ -132,7 +193,7 @@ async def analyze_video(file: UploadFile = File(...)):
     if not file.content_type or not file.content_type.startswith("video/"):
         raise HTTPException(status_code=400, detail="Only video files are accepted.")
 
-    load_model_once()
+    load_video_model()
 
     suffix = Path(file.filename or "video.mp4").suffix or ".mp4"
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
@@ -140,12 +201,11 @@ async def analyze_video(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, tmp)
         tmp.close()
 
-        # Run inference
-        inputs = PROCESSOR(tmp.name)
+        inputs = VIDEO_PROCESSOR(tmp.name)
         frames_tensor = inputs["pixel_values"]
 
         with TORCH_MOD.no_grad():
-            fmap, logits = MODEL(frames_tensor)
+            fmap, logits = VIDEO_MODEL(frames_tensor)
             probs = F_MODULE.softmax(logits, dim=1).cpu().numpy()[0]
             labels = {0: "REAL", 1: "FAKE"}
             result = [
@@ -171,6 +231,34 @@ async def analyze_video(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
     finally:
         os.unlink(tmp.name)
+
+
+# ── Audio analysis ──────────────────────────────────────────────────────
+AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac", ".wma", ".webm"}
+
+
+@app.post("/analyze-audio")
+async def analyze_audio(file: UploadFile = File(...)):
+    """Upload an audio file and get deepfake analysis results."""
+    ext = Path(file.filename or "audio.wav").suffix.lower()
+    if ext not in AUDIO_EXTENSIONS:
+        raise HTTPException(400, f"Unsupported audio format: {ext}")
+
+    load_audio_model()
+
+    file_id = uuid.uuid4().hex[:12]
+    save_path = AUDIO_UPLOAD_DIR / f"{file_id}{ext}"
+    try:
+        with open(save_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+
+        result = AUDIO_DETECTOR.detect(str(save_path))
+        return JSONResponse(content=result)
+    except Exception as e:
+        raise HTTPException(500, f"Audio analysis failed: {str(e)}")
+    finally:
+        if save_path.exists():
+            save_path.unlink()
 
 
 if __name__ == "__main__":
