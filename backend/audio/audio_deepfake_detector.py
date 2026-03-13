@@ -25,6 +25,13 @@ import sys
 import subprocess
 import tempfile
 import warnings
+import io
+
+# Fix Windows console encoding — prevent charmap errors with Unicode chars
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if sys.stderr.encoding != 'utf-8':
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 import numpy as np
 import torch
 import librosa
@@ -538,7 +545,7 @@ def compute_authenticity_score(
     print(f"    Speaker Verif    ({W_SPEAKER:.0%}): {speaker_score*100:5.1f}%")
     print(f"    Artifact Detect  ({W_ARTIFACT:.0%}): {artifact_score*100:5.1f}%")
     print(f"    Noise Analysis   ({W_NOISE:.0%}): {noise_score*100:5.1f}%")
-    print(f"    ─────────────────────────")
+    print(f"    -----------------------------")
     print(f"    FAKE probability      : {fake_prob*100:5.1f}%")
 
     return {
@@ -589,8 +596,29 @@ def score_ml(audio, fe, model, temp):
         elif any(k in lbl for k in ("real","genuine","bonafide")): real_p = float(p)
     votes = [id2label[int(np.argmax(l))].lower() for l in logits]
     fv    = sum(1 for v in votes if any(k in v for k in ("fake","spoof")))
+
+    # Per-chunk timeline data
+    step_sec = ML_CHUNK_SEC - ML_OVERLAP
+    chunk_details = []
+    for idx, lg in enumerate(logits):
+        cp = softmax_t(lg, temp)
+        c_fake, c_real = 0.0, 0.0
+        for i, p in enumerate(cp):
+            lbl = id2label[i].lower()
+            if any(k in lbl for k in ("fake","spoof","synthetic")): c_fake = float(p)
+            elif any(k in lbl for k in ("real","genuine","bonafide")): c_real = float(p)
+        start = round(idx * step_sec, 2)
+        end = round(start + ML_CHUNK_SEC, 2)
+        label = "fake" if c_fake >= 0.5 else "real"
+        chunk_details.append({
+            "start": start, "end": end,
+            "fake_prob": round(c_fake, 4), "real_prob": round(c_real, 4),
+            "label": label,
+        })
+
     return {"fake_prob": fake_p, "real_prob": real_p,
-            "fake_chunks": fv, "total_chunks": len(chunks)}
+            "fake_chunks": fv, "total_chunks": len(chunks),
+            "chunk_details": chunk_details}
 
 
 # ==============================================
@@ -1216,6 +1244,8 @@ class DeepfakeDetector:
                 "breath_count": breathing["breath_count"],
                 "intervals": breathing["breath_intervals"],
             },
+            "timeline": ml_a.get("chunk_details", []),
+            "duration": dur,
         }
 
     def detect_batch(self, paths: list) -> list:

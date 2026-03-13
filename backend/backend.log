@@ -1,0 +1,45 @@
+D:\Hackathon\hackverse-cybersecurity-wc01_bytedevs\backend\main.py:160: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [6520]
+INFO:     Waiting for application startup.
+D:\Hackathon\hackverse-cybersecurity-wc01_bytedevs\backend\venv\lib\site-packages\torchvision\models\_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+D:\Hackathon\hackverse-cybersecurity-wc01_bytedevs\backend\venv\lib\site-packages\torchvision\models\_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=ResNeXt50_32X4D_Weights.IMAGENET1K_V1`. You can also use `weights=ResNeXt50_32X4D_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+
+============================================================
+  Audio Deepfake Detector  [v7 - Full Pipeline]
+============================================================
+  Device : CPU
+  VAD    : WebRTC
+  Speaker: Resemblyzer
+------------------------------------------------------------
+
+  Loading ML models...
+  [ML] Loading: Gustking/wav2vec2-large-xlsr-deepfake-audio-classification
+Loading weights:   0%|          | 0/426 [00:00<?, ?it/s]Loading weights: 100%|██████████| 426/426 [00:00<00:00, 5108.99it/s]
+  [ML] Labels : {0: 'real', 1: 'fake'}
+  [ML] Loading: MelodyMachine/Deepfake-audio-detection-V2
+Loading weights:   0%|          | 0/215 [00:00<?, ?it/s]Loading weights: 100%|██████████| 215/215 [00:00<00:00, 3588.07it/s]INFO:     Application startup complete.
+ERROR:    [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8001): only one usage of each socket address (protocol/network address/port) is normally permitted
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+
+  [ML] Labels : {0: 'fake', 1: 'real'}
+
+============================================================
+
+Audio deepfake detector loaded successfully!
+Audio model ready!
+Server ready!
+Added FFmpeg to PATH: C:\Users\susha/AppData/Local/Microsoft/WinGet/Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.0.1-full_build\bin
+Loading deepfake detection models...
+Using cached weights: D:\Hackathon\hackverse-cybersecurity-wc01_bytedevs\backend\model_cache\model_87_acc_20_frames_final_data.pt
+Video model loaded successfully!
+Video processor ready!
+Video model ready!
