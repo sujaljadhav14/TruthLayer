@@ -1228,20 +1228,25 @@ class DeepfakeDetector:
             "ml_a":           ml_a,
             "ml_b":           ml_b,
             "freq_score":     round(fs, 4),
-            "signals":        {k: round(v, 4) for k, v in signals.items()},
+            "signals":        {k: {"value": round(v, 4), "score": round(v, 4), "vote": "fake" if v > 0.55 else "real" if v < 0.45 else "uncertain"} for k, v in signals.items()},
             "freq_votes":     {"fake": fv, "real": rv, "uncertain": 8 - fv - rv},
             "warning":        warning,
             # New pipeline data
             "authenticity_score": scores,
             "vad": {
-                "n_segments": len(speech_segments),
+                "segments": len(speech_segments),
                 "speech_ratio": round(vad_result["speech_ratio"], 4),
             },
-            "mfcc": mfcc_features,
-            "speaker_verification": spkr_result,
+            "mfcc": {
+                "regularity_score": mfcc_features.get("mfcc_regularity_score", 0),
+            },
+            "speaker_verification": {
+                "similarity": spkr_result.get("mean_similarity", 0),
+                "score": spkr_result.get("speaker_score", 0.5),
+            },
             "breathing": {
                 "score": breathing["breathing_score"],
-                "breath_count": breathing["breath_count"],
+                "count": breathing["breath_count"],
                 "intervals": breathing["breath_intervals"],
             },
             "timeline": ml_a.get("chunk_details", []),

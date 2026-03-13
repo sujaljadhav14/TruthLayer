@@ -234,7 +234,7 @@ async def analyze_video(file: UploadFile = File(...)):
 
 
 # ── Audio analysis ──────────────────────────────────────────────────────
-AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac", ".wma", ".webm"}
+AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac", ".wma", ".webm", ".mpeg", ".mpg"}
 
 
 @app.post("/analyze-audio")
