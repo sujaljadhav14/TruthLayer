@@ -14,7 +14,7 @@ export default function HowItWorks() {
           <p className="text-gray-400 mb-8">
             Upload any suspicious media and let our AI agents uncover the truth.
           </p>
-          <Link href="/dashboard" className="inline-block px-6 py-3 rounded bg-green-500/10 border border-green-500 text-green-500 font-medium hover:bg-green-500 hover:text-black transition-all">
+          <Link href="/dashboard" className="btn-green inline-block px-6 py-3 rounded bg-green-500/10 border border-green-500 text-green-500 font-medium hover:bg-green-500 hover:text-black transition-all">
             Start Analysis
           </Link>
         </div>

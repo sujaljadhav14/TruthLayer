@@ -7,21 +7,23 @@ import Link from "next/link";
 export default function Hero() {
   return (
     <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden bg-[#050505]">
-      {/* Background Grid Animation */}
-      <div className="absolute inset-0 z-0 flex items-center justify-center">
+      {/* Background Grid Animation — GPU-accelerated with will-change */}
+      <div className="absolute inset-0 z-0 flex items-center justify-center will-change-transform">
         {/* Static base grid */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#00ff002a_2px,transparent_2px),linear-gradient(to_bottom,#00ff002a_2px,transparent_2px)] bg-[size:6rem_6rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50" />
-        
-        {/* Back to front scaling grids */}
+
+        {/* Scaling grid rings — use CSS transform only (GPU composited) */}
         <motion.div
           animate={{ scale: [0.5, 3], opacity: [0, 0.5, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-0 bg-[linear-gradient(to_right,#00ff004a_2px,transparent_2px),linear-gradient(to_bottom,#00ff004a_2px,transparent_2px)] bg-[size:6rem_6rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]"
+          className="absolute inset-0 bg-[linear-gradient(to_right,#00ff004a_2px,transparent_2px),linear-gradient(to_bottom,#00ff004a_2px,transparent_2px)] bg-[size:6rem_6rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] will-change-transform"
+          style={{ willChange: 'transform, opacity' }}
         />
         <motion.div
           animate={{ scale: [0.5, 3], opacity: [0, 0.5, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "linear", delay: 2.5 }}
-          className="absolute inset-0 bg-[linear-gradient(to_right,#00ff004a_2px,transparent_2px),linear-gradient(to_bottom,#00ff004a_2px,transparent_2px)] bg-[size:6rem_6rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]"
+          className="absolute inset-0 bg-[linear-gradient(to_right,#00ff004a_2px,transparent_2px),linear-gradient(to_bottom,#00ff004a_2px,transparent_2px)] bg-[size:6rem_6rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] will-change-transform"
+          style={{ willChange: 'transform, opacity' }}
         />
       </div>
 
@@ -40,7 +42,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-5xl md:text-7xl font-bold tracking-tight mb-6"
+          className="text-6xl md:text-8xl font-extrabold tracking-tight leading-[1.1] mb-6"
         >
           Uncover the truth <br className="hidden md:block" />
           <span className="text-gray-400">behind digital media</span>
@@ -61,10 +63,10 @@ export default function Hero() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <Link href="/dashboard" className="px-8 py-3 rounded bg-green-500 text-black font-medium hover:bg-green-400 transition-all">
+          <Link href="/dashboard" className="btn-green px-8 py-3 rounded bg-green-500 text-black font-medium hover:bg-green-400 transition-all">
             Go to Dashboard
           </Link>
-          <a href="#how-it-works" className="px-8 py-3 rounded text-white font-medium hover:bg-white/5 transition-all border border-white/10">
+          <a href="#how-it-works" className="btn-outline px-8 py-3 rounded text-white font-medium hover:bg-white/5 transition-all border border-white/10">
             How it works
           </a>
         </motion.div>

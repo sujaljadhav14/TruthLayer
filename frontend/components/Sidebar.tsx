@@ -72,10 +72,12 @@ export default function Sidebar() {
 
       <div className="p-4 border-t border-white/5 space-y-3">
         <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-[#111]">
+          {/* STEP 2: Lazy load - defer offscreen avatar fetch until needed */}
           {user?.imageUrl ? (
             <img
               src={user.imageUrl}
               alt="Profile"
+              loading="lazy"
               className="w-8 h-8 rounded-full border border-green-500/30"
             />
           ) : (
