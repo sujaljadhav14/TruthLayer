@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+python-multipart
+ffmpeg-python
+librosa
+numpy
+scipy
+torch
+torchaudio
+transformers
+webrtcvad
+resemblyzer

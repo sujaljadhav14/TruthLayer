@@ -5,16 +5,24 @@ const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
+    const file = formData.get("file") as File | null;
 
-    const response = await fetch(`${FASTAPI_URL}/api/analyze-audio`, {
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    const backendForm = new FormData();
+    backendForm.append("file", file);
+
+    const response = await fetch(`${FASTAPI_URL}/analyze-audio`, {
       method: "POST",
-      body: formData,
+      body: backendForm,
     });
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => ({}));
       return NextResponse.json(
-        { error: err.detail || "Audio analysis failed" },
+        { error: errorData.detail || "Audio analysis failed" },
         { status: response.status }
       );
     }
@@ -22,9 +30,9 @@ export async function POST(req: NextRequest) {
     const result = await response.json();
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Audio proxy error:", error);
+    console.error("Audio analysis proxy error:", error);
     return NextResponse.json(
-      { error: "Failed to connect to audio analysis server." },
+      { error: "Failed to connect to analysis server. Make sure the Python server is running." },
       { status: 502 }
     );
   }

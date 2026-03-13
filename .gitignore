@@ -35,3 +35,6 @@ Thumbs.db
 # Planning docs (not for repo)
 IMPLEMENTATION_PLAN.md
 manipulation_workflow.md
+
+# Logs
+*.log
