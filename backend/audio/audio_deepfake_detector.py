@@ -518,39 +518,54 @@ def detect_breathing(audio: np.ndarray, sr: int, speech_segments: list) -> dict:
 #  STEP 8 -- AUTHENTICITY SCORING
 # ==============================================
 
-W_DEEPFAKE  = 0.4
-W_SPEAKER   = 0.3
-W_ARTIFACT  = 0.2
-W_NOISE     = 0.1
+W_DEEPFAKE  = 0.55
+W_SPEAKER   = 0.10
+W_ARTIFACT  = 0.25
+W_NOISE     = 0.10
 
 def compute_authenticity_score(
     deepfake_score: float,
     speaker_score: float,
     artifact_score: float,
     noise_score: float,
+    speaker_reliable: bool = True,
 ) -> dict:
     """
     Final authenticity score = weighted combination.
     Score is probability of FAKE (0=real, 1=fake).
+    When speaker verification is unreliable (returned neutral 0.5),
+    redistribute its weight to the ML deepfake model.
     """
-    fake_prob = (W_DEEPFAKE * deepfake_score +
-                 W_SPEAKER  * speaker_score +
-                 W_ARTIFACT * artifact_score +
-                 W_NOISE    * noise_score)
+    w_df = W_DEEPFAKE
+    w_sp = W_SPEAKER
+    w_ar = W_ARTIFACT
+    w_no = W_NOISE
+
+    if not speaker_reliable:
+        # Speaker returned neutral 0.5 -- redistribute weight to ML model
+        w_df += w_sp
+        w_sp = 0.0
+
+    fake_prob = (w_df * deepfake_score +
+                 w_sp * speaker_score +
+                 w_ar * artifact_score +
+                 w_no * noise_score)
     fake_prob = float(np.clip(fake_prob, 0.0, 1.0))
     real_prob = 1.0 - fake_prob
 
     print(f"\n  [SCORE] Authenticity Score Breakdown:")
-    print(f"    Deepfake Model   ({W_DEEPFAKE:.0%}): {deepfake_score*100:5.1f}%")
-    print(f"    Speaker Verif    ({W_SPEAKER:.0%}): {speaker_score*100:5.1f}%")
-    print(f"    Artifact Detect  ({W_ARTIFACT:.0%}): {artifact_score*100:5.1f}%")
-    print(f"    Noise Analysis   ({W_NOISE:.0%}): {noise_score*100:5.1f}%")
+    print(f"    Deepfake Model   ({w_df:.0%}): {deepfake_score*100:5.1f}%")
+    print(f"    Speaker Verif    ({w_sp:.0%}): {speaker_score*100:5.1f}%"
+          f"{'  [neutral - weight redistributed]' if not speaker_reliable else ''}")
+    print(f"    Artifact Detect  ({w_ar:.0%}): {artifact_score*100:5.1f}%")
+    print(f"    Noise Analysis   ({w_no:.0%}): {noise_score*100:5.1f}%")
     print(f"    -----------------------------")
     print(f"    FAKE probability      : {fake_prob*100:5.1f}%")
 
     return {
         "fake": fake_prob,
         "real": real_prob,
+        "total": round(fake_prob, 4),
         "breakdown": {
             "deepfake_model": round(deepfake_score, 4),
             "speaker_verification": round(speaker_score, 4),
@@ -558,10 +573,10 @@ def compute_authenticity_score(
             "noise_analysis": round(noise_score, 4),
         },
         "weights": {
-            "deepfake_model": W_DEEPFAKE,
-            "speaker_verification": W_SPEAKER,
-            "artifact_detection": W_ARTIFACT,
-            "noise_analysis": W_NOISE,
+            "deepfake_model": w_df,
+            "speaker_verification": w_sp,
+            "artifact_detection": w_ar,
+            "noise_analysis": w_no,
         },
     }
 
@@ -572,11 +587,15 @@ def compute_authenticity_score(
 
 def load_hf_model(model_id):
     print(f"  [ML] Loading: {model_id}")
-    fe    = AutoFeatureExtractor.from_pretrained(model_id)
-    model = AutoModelForAudioClassification.from_pretrained(model_id)
-    model.to(DEVICE).eval()
-    print(f"  [ML] Labels : {model.config.id2label}")
-    return fe, model
+    try:
+        fe    = AutoFeatureExtractor.from_pretrained(model_id)
+        model = AutoModelForAudioClassification.from_pretrained(model_id)
+        model.to(DEVICE).eval()
+        print(f"  [ML] Labels : {model.config.id2label}")
+        return fe, model
+    except Exception as e:
+        print(f"  [ML] ERROR loading {model_id}: {e}")
+        raise
 
 def infer_chunk(chunk, fe, model):
     inputs = fe(chunk, sampling_rate=ML_SR, return_tensors="pt", padding=True)
@@ -587,13 +606,28 @@ def infer_chunk(chunk, fe, model):
 def score_ml(audio, fe, model, temp):
     chunks   = split_chunks(audio, ML_SR, ML_CHUNK_SEC, ML_OVERLAP)
     logits   = [infer_chunk(c, fe, model) for c in chunks]
-    probs    = softmax_t(np.mean(logits, axis=0), temp)
+
+    # Guard against empty or NaN logits
+    if not logits:
+        return {"fake_prob": 0.5, "real_prob": 0.5,
+                "fake_chunks": 0, "total_chunks": 0,
+                "chunk_details": []}
+
+    mean_logits = np.mean(logits, axis=0)
+    if np.any(np.isnan(mean_logits)):
+        mean_logits = np.nan_to_num(mean_logits, nan=0.0)
+
+    probs    = softmax_t(mean_logits, temp)
     id2label = model.config.id2label
     fake_p, real_p = 0.0, 0.0
     for i, p in enumerate(probs):
         lbl = id2label[i].lower()
         if any(k in lbl for k in ("fake","spoof","synthetic")): fake_p = float(p)
         elif any(k in lbl for k in ("real","genuine","bonafide")): real_p = float(p)
+
+    # Ensure we always have valid probabilities
+    if fake_p == 0.0 and real_p == 0.0:
+        fake_p, real_p = 0.5, 0.5
     votes = [id2label[int(np.argmax(l))].lower() for l in logits]
     fv    = sum(1 for v in votes if any(k in v for k in ("fake","spoof")))
 
@@ -601,7 +635,8 @@ def score_ml(audio, fe, model, temp):
     step_sec = ML_CHUNK_SEC - ML_OVERLAP
     chunk_details = []
     for idx, lg in enumerate(logits):
-        cp = softmax_t(lg, temp)
+        lg_safe = np.nan_to_num(lg, nan=0.0)
+        cp = softmax_t(lg_safe, temp)
         c_fake, c_real = 0.0, 0.0
         for i, p in enumerate(cp):
             lbl = id2label[i].lower()
@@ -1176,16 +1211,19 @@ class DeepfakeDetector:
         print(f"\n  [STEP 8] Authenticity Scoring...")
 
         # Map to 4-component scoring formula:
-        # Deepfake Model (0.4): ML model ensemble
+        # Deepfake Model (55%): ML model ensemble -- primary signal
         deepfake_component = deepfake_ml
 
-        # Speaker Verification (0.3): Resemblyzer consistency
-        speaker_component = spkr_result["speaker_score"]
+        # Speaker Verification (10%): Resemblyzer consistency
+        speaker_component = spkr_result.get("speaker_score", 0.5)
+        # Check if speaker verification was actually reliable
+        speaker_reliable = (spkr_result.get("n_segments", 0) >= 2 and
+                            spkr_result.get("mean_similarity", 0.0) > 0.0)
 
-        # Artifact Detection (0.2): frequency signals
+        # Artifact Detection (25%): frequency signals
         artifact_component = fs
 
-        # Noise Analysis (0.1): noise floor + breathing
+        # Noise Analysis (10%): noise floor + breathing
         noise_floor_score = signals.get("noise_floor", 0.5)
         breathing_score = breathing["breathing_score"]
         noise_component = 0.5 * noise_floor_score + 0.5 * breathing_score
@@ -1193,6 +1231,7 @@ class DeepfakeDetector:
         scores = compute_authenticity_score(
             deepfake_component, speaker_component,
             artifact_component, noise_component,
+            speaker_reliable=speaker_reliable,
         )
 
         # ── Tool Classification ──
@@ -1312,7 +1351,7 @@ def print_result(r: dict):
     breakdown = auth.get("breakdown", {})
     weights   = auth.get("weights", {})
     if breakdown:
-        print(f"  |  -- Authenticity Score (0.4/0.3/0.2/0.1) ----------")
+        print(f"  |  -- Authenticity Score ({W_DEEPFAKE}/{W_SPEAKER}/{W_ARTIFACT}/{W_NOISE}) ----------")
         print(f"  |  Deepfake Model  ({weights.get('deepfake_model',0):.0%}): "
               f"{breakdown.get('deepfake_model',0)*100:5.1f}%  "
               f"{_bar(breakdown.get('deepfake_model',0), 20)}")
@@ -1330,31 +1369,28 @@ def print_result(r: dict):
     # VAD
     if vad:
         print(f"  |  -- Voice Activity Detection ---------------------")
-        print(f"  |  Speech segments : {vad.get('n_segments', 0)}")
+        print(f"  |  Speech segments : {vad.get('segments', 0)}")
         print(f"  |  Speech ratio    : {vad.get('speech_ratio', 0)*100:.1f}%")
         print(f"  |")
 
     # MFCC
     if mfcc:
         print(f"  |  -- MFCC Features --------------------------------")
-        print(f"  |  Regularity score: {mfcc.get('mfcc_regularity_score',0)*100:.1f}%")
-        print(f"  |  MFCC mean/std   : {mfcc.get('mfcc_mean',0):.3f} / "
-              f"{mfcc.get('mfcc_std',0):.3f}")
+        print(f"  |  Regularity score: {mfcc.get('regularity_score',0)*100:.1f}%")
         print(f"  |")
 
     # Speaker Verification
     if spkr:
         print(f"  |  -- Speaker Verification (Resemblyzer) -----------")
-        print(f"  |  Segments        : {spkr.get('n_segments', 0)}")
-        print(f"  |  Mean similarity : {spkr.get('mean_similarity', 0):.3f}")
-        print(f"  |  Speaker score   : {spkr.get('speaker_score', 0)*100:.1f}%  "
-              f"{_bar(spkr.get('speaker_score', 0), 20)}")
+        print(f"  |  Mean similarity : {spkr.get('similarity', 0):.3f}")
+        print(f"  |  Speaker score   : {spkr.get('score', 0)*100:.1f}%  "
+              f"{_bar(spkr.get('score', 0), 20)}")
         print(f"  |")
 
     # Breathing
     if brth:
         print(f"  |  -- Breathing Detection --------------------------")
-        print(f"  |  Breaths found   : {brth.get('breath_count', 0)}")
+        print(f"  |  Breaths found   : {brth.get('count', 0)}")
         intervals = brth.get('intervals', [])
         if intervals:
             print(f"  |  Mean interval   : {np.mean(intervals):.1f}s")

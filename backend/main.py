@@ -80,11 +80,9 @@ app.add_middleware(
 
 # ── Register new routers (additive only) ────────────────────────────────
 from ai_debate.routes import router as debate_router
-from audio_analyzer.routes import router as audio_router
 from api.heatmap import router as heatmap_router
 
 app.include_router(debate_router, prefix="/api")
-app.include_router(audio_router, prefix="/api")
 app.include_router(heatmap_router, prefix="/api")
 
 
@@ -196,16 +194,20 @@ async def health():
 
 
 # ── Video analysis ──────────────────────────────────────────────────────
+VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm", ".wmv", ".flv", ".mpeg", ".mpg"}
+
 @app.post("/analyze")
 async def analyze_video(file: UploadFile = File(...)):
     """Accept a video upload, run deepfake detection, return verdict + scores."""
 
-    if not file.content_type or not file.content_type.startswith("video/"):
+    ext = Path(file.filename or "video.mp4").suffix.lower()
+    is_video = (file.content_type and file.content_type.startswith("video/")) or ext in VIDEO_EXTENSIONS
+    if not is_video:
         raise HTTPException(status_code=400, detail="Only video files are accepted.")
 
     load_video_model()
 
-    suffix = Path(file.filename or "video.mp4").suffix or ".mp4"
+    suffix = ext or ".mp4"
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     try:
         shutil.copyfileobj(file.file, tmp)
@@ -272,4 +274,4 @@ async def analyze_audio(file: UploadFile = File(...)):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

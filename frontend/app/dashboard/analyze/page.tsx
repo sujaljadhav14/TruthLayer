@@ -19,9 +19,12 @@ import {
   Fingerprint,
   Wind,
   Clock,
+  Zap,
+  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 import DebatePanel from "@/components/DebatePanel";
+import HeatmapTimeline from "@/components/HeatmapTimeline";
 
 /* ── Types ── */
 
@@ -45,16 +48,32 @@ type AudioResult = {
   override: boolean;
   source_tool: string;
   tool_scores: Record<string, number>;
-  ml_a: { fake_prob: number; real_prob: number };
-  ml_b: { fake_prob: number; real_prob: number } | null;
+  ml_a: { fake_prob: number; real_prob: number; fake_chunks: number; total_chunks: number };
+  ml_b: { fake_prob: number; real_prob: number; fake_chunks: number; total_chunks: number } | null;
   freq_score: number;
   signals: Record<string, { value: number; score: number; vote: string }>;
   freq_votes: { fake: number; real: number; uncertain: number };
-  authenticity_score: { total: number };
+  authenticity_score: {
+    total: number;
+    fake: number;
+    real: number;
+    breakdown: {
+      deepfake_model: number;
+      speaker_verification: number;
+      artifact_detection: number;
+      noise_analysis: number;
+    };
+    weights: {
+      deepfake_model: number;
+      speaker_verification: number;
+      artifact_detection: number;
+      noise_analysis: number;
+    };
+  };
   vad: { segments: number; speech_ratio: number };
   mfcc: { regularity_score: number };
   speaker_verification: { similarity: number; score: number };
-  breathing: { count: number; score: number };
+  breathing: { count: number; score: number; intervals: number[] };
   warning: string;
   timeline: { start: number; end: number; fake_prob: number; real_prob: number; label: string }[];
   duration: number;
@@ -67,7 +86,7 @@ const AUDIO_EXTS = new Set(["mp3", "wav", "flac", "ogg", "m4a", "aac", "wma", "w
 
 function isAudioFile(f: File) {
   const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
-  return f.type.startsWith("audio/") || AUDIO_EXTS.has(ext);
+  return f.type.startsWith("audio/") || f.type === "video/mpeg" || AUDIO_EXTS.has(ext);
 }
 
 function formatFileSize(bytes: number) {
@@ -76,6 +95,7 @@ function formatFileSize(bytes: number) {
 }
 
 function pct(v: number) {
+  if (v == null || isNaN(v)) return "N/A";
   return `${(v * 100).toFixed(1)}%`;
 }
 
@@ -83,6 +103,13 @@ function fmtTime(sec: number) {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/* ── Signal chart color helper ── */
+function signalColor(vote: string) {
+  if (vote === "fake") return { bar: "from-red-600 to-red-400", text: "text-red-400", bg: "bg-red-500/10" };
+  if (vote === "real") return { bar: "from-green-600 to-green-400", text: "text-green-400", bg: "bg-green-500/10" };
+  return { bar: "from-amber-600 to-amber-400", text: "text-amber-400", bg: "bg-amber-500/10" };
 }
 
 /* ── Component ── */
@@ -295,7 +322,108 @@ export default function AnalyzePage() {
               </div>
             </div>
 
-            {/* ML Models + Frequency Analysis */}
+            {/* Authenticity Score Breakdown — 4 weighted components */}
+            {audioResult.authenticity_score?.breakdown && (
+              <div className="bg-[#111] border border-white/10 rounded-3xl p-8 mb-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <Zap className="w-5 h-5 text-yellow-500" />
+                  <h3 className="text-lg font-bold text-white">Authenticity Score Breakdown</h3>
+                  <span className="text-xs text-gray-500 ml-auto">
+                    Weighted composite: {pct(audioResult.authenticity_score.total)} fake
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {[
+                    {
+                      label: "ML Deepfake Model",
+                      key: "deepfake_model" as const,
+                      icon: <Fingerprint className="w-4 h-4 text-purple-400" />,
+                      desc: "wav2vec2 transformer models",
+                    },
+                    {
+                      label: "Speaker Verification",
+                      key: "speaker_verification" as const,
+                      icon: <Mic className="w-4 h-4 text-blue-400" />,
+                      desc: "Resemblyzer consistency",
+                    },
+                    {
+                      label: "Artifact Detection",
+                      key: "artifact_detection" as const,
+                      icon: <Activity className="w-4 h-4 text-cyan-400" />,
+                      desc: "8 frequency signals",
+                    },
+                    {
+                      label: "Noise Analysis",
+                      key: "noise_analysis" as const,
+                      icon: <Wind className="w-4 h-4 text-green-400" />,
+                      desc: "Noise floor + breathing",
+                    },
+                  ].map((comp) => {
+                    const score = audioResult.authenticity_score.breakdown[comp.key];
+                    const weight = audioResult.authenticity_score.weights[comp.key];
+                    const isFakeSignal = score > 0.55;
+                    const isRealSignal = score < 0.45;
+                    return (
+                      <div key={comp.key}>
+                        <div className="flex items-center justify-between text-sm mb-2">
+                          <div className="flex items-center gap-2">
+                            {comp.icon}
+                            <span className="text-gray-300 font-medium">{comp.label}</span>
+                            <span className="text-[10px] text-gray-600">({comp.desc})</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] text-gray-500 font-mono">{(weight * 100).toFixed(0)}% weight</span>
+                            <span className={`text-sm font-bold ${isFakeSignal ? "text-red-400" : isRealSignal ? "text-green-400" : "text-amber-400"}`}>
+                              {pct(score)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-2.5 bg-white/5 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: pct(score) }}
+                            transition={{ duration: 1, ease: "easeOut" }}
+                            className={`h-full rounded-full bg-gradient-to-r ${isFakeSignal ? "from-red-600 to-red-400" : isRealSignal ? "from-green-600 to-green-400" : "from-amber-600 to-amber-400"}`}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 8-Step Analysis Pipeline Overview */}
+            <div className="bg-[#111] border border-white/10 rounded-3xl p-8 mb-6">
+              <div className="flex items-center gap-3 mb-6">
+                <ShieldCheck className="w-5 h-5 text-green-500" />
+                <h3 className="text-lg font-bold text-white">8-Step Analysis Pipeline</h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { step: 1, name: "FFmpeg Pre-process", value: `${audioResult.duration?.toFixed(1) || "?"}s`, sub: "Audio normalized" },
+                  { step: 2, name: "Voice Activity", value: `${audioResult.vad.segments} segs`, sub: `${pct(audioResult.vad.speech_ratio)} speech` },
+                  { step: 3, name: "MFCC Features", value: pct(audioResult.mfcc.regularity_score), sub: "39 features extracted" },
+                  { step: 4, name: "Speaker Verify", value: pct(audioResult.speaker_verification.similarity), sub: `Score: ${pct(1 - audioResult.speaker_verification.score)}` },
+                  { step: 5, name: "ML Detection", value: pct(audioResult.ml_a.fake_prob), sub: `${audioResult.ml_a.fake_chunks}/${audioResult.ml_a.total_chunks} chunks` },
+                  { step: 6, name: "8 Freq Signals", value: pct(audioResult.freq_score), sub: `${audioResult.freq_votes.fake}F/${audioResult.freq_votes.real}R/${audioResult.freq_votes.uncertain}U` },
+                  { step: 7, name: "Breathing", value: `${audioResult.breathing.count} found`, sub: `Score: ${pct(1 - audioResult.breathing.score)}` },
+                  { step: 8, name: "Auth Score", value: pct(1 - audioResult.authenticity_score.total), sub: audioResult.override ? "Override active" : "Weighted composite" },
+                ].map((s) => (
+                  <div key={s.step} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <span className="text-[10px] font-bold text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded">{s.step}</span>
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider truncate">{s.name}</span>
+                    </div>
+                    <p className="text-base font-bold text-white">{s.value}</p>
+                    <p className="text-[10px] text-gray-600 mt-0.5">{s.sub}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ML Models + Signal Votes */}
             <div className="grid md:grid-cols-2 gap-6 mb-6">
               <div className="bg-[#111] border border-white/10 rounded-3xl p-6">
                 <div className="flex items-center gap-3 mb-5">
@@ -345,18 +473,71 @@ export default function AnalyzePage() {
                     <p className="text-xs text-gray-500">Uncertain</p>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  {Object.entries(audioResult.signals).slice(0, 4).map(([name, sig]) => (
-                    <div key={name} className="flex justify-between items-center text-xs px-2">
-                      <span className="text-gray-400 capitalize">{name.replace(/_/g, " ")}</span>
-                      <span className={`font-bold ${sig.vote === "fake" ? "text-red-400" : sig.vote === "real" ? "text-green-400" : "text-amber-400"}`}>
-                        {sig.vote}
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
+
+            {/* ── Signal Strength Chart (all signals) ── */}
+            {audioResult.signals && Object.keys(audioResult.signals).length > 0 && (
+              <div className="bg-[#111] border border-white/10 rounded-3xl p-8 mb-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <TrendingUp className="w-5 h-5 text-cyan-400" />
+                  <h3 className="text-lg font-bold text-white">Frequency Signal Analysis</h3>
+                  <span className="text-xs text-gray-500 ml-auto">
+                    {Object.keys(audioResult.signals).length} signals analyzed
+                  </span>
+                </div>
+
+                {/* SVG bar chart */}
+                <div className="bg-black/30 rounded-xl p-4 border border-white/5 mb-4">
+                  <svg viewBox="0 0 600 200" className="w-full" preserveAspectRatio="xMidYMid meet">
+                    {(() => {
+                      const entries = Object.entries(audioResult.signals);
+                      const barH = entries.length > 0 ? Math.min(22, 180 / entries.length) : 20;
+                      const gap = 4;
+                      const labelW = 140;
+                      const chartW = 420;
+                      const startX = 150;
+
+                      return entries.map(([name, sig], i) => {
+                        const y = 10 + i * (barH + gap);
+                        const w = Math.max(2, sig.score * chartW);
+                        const voteColor = sig.vote === "fake" ? "#ef4444" : sig.vote === "real" ? "#22c55e" : "#eab308";
+                        return (
+                          <g key={name}>
+                            {/* Label */}
+                            <text x={labelW} y={y + barH / 2 + 4} textAnchor="end" fontSize="9" className="fill-gray-400">
+                              {name.replace(/_/g, " ")}
+                            </text>
+                            {/* Background bar */}
+                            <rect x={startX} y={y} width={chartW} height={barH} rx={3} fill="rgba(255,255,255,0.03)" />
+                            {/* Value bar */}
+                            <rect x={startX} y={y} width={w} height={barH} rx={3} fill={voteColor} opacity={0.7} />
+                            {/* Value label */}
+                            <text x={startX + w + 6} y={y + barH / 2 + 4} fontSize="8" fill={voteColor}>
+                              {sig.score.toFixed(3)} ({sig.vote})
+                            </text>
+                          </g>
+                        );
+                      });
+                    })()}
+                  </svg>
+                </div>
+
+                {/* Signal details grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {Object.entries(audioResult.signals).map(([name, sig]) => {
+                    const c = signalColor(sig.vote);
+                    return (
+                      <div key={name} className={`${c.bg} border border-white/5 rounded-xl p-3 text-center`}>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 truncate">{name.replace(/_/g, " ")}</p>
+                        <p className={`text-sm font-bold ${c.text}`}>{sig.value.toFixed(4)}</p>
+                        <p className={`text-[10px] font-bold mt-1 ${c.text}`}>{sig.vote.toUpperCase()}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Audio Timeline */}
             {audioResult.timeline && audioResult.timeline.length > 0 && (
@@ -366,22 +547,25 @@ export default function AnalyzePage() {
                   <h3 className="text-lg font-bold text-white">Audio Timeline</h3>
                   <span className="text-xs text-gray-500 ml-auto">{fmtTime(audioResult.duration || audioResult.timeline[audioResult.timeline.length - 1].end)}</span>
                 </div>
-                <div className="relative">
+
+                {/* Confidence gradient bar */}
+                <div className="mb-4">
                   <div className="flex rounded-xl overflow-hidden h-10 bg-white/5">
                     {audioResult.timeline.map((seg, i) => {
                       const total = audioResult.duration || audioResult.timeline[audioResult.timeline.length - 1].end;
                       const widthPct = ((seg.end - seg.start) / total) * 100;
+                      const opacity = 0.4 + Math.abs(seg.fake_prob - 0.5) * 1.2; // higher confidence = more opaque
                       return (
                         <div
                           key={i}
-                          className={`relative group h-full border-r border-black/20 last:border-r-0 transition-opacity hover:opacity-80 ${
+                          className={`relative group h-full border-r border-black/20 last:border-r-0 transition-opacity hover:opacity-90 ${
                             seg.label === "fake"
-                              ? "bg-gradient-to-b from-red-500/80 to-red-600/60"
-                              : "bg-gradient-to-b from-green-500/80 to-green-600/60"
+                              ? "bg-gradient-to-b from-red-500 to-red-600"
+                              : "bg-gradient-to-b from-green-500 to-green-600"
                           }`}
-                          style={{ width: `${widthPct}%`, minWidth: "2px" }}
+                          style={{ width: `${widthPct}%`, minWidth: "2px", opacity }}
                         >
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black/90 border border-white/10 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black/95 border border-white/10 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                             <p className="text-white font-medium">{fmtTime(seg.start)} - {fmtTime(seg.end)}</p>
                             <p className={seg.label === "fake" ? "text-red-400" : "text-green-400"}>
                               {seg.label === "fake" ? "Fake" : "Real"}: {pct(seg.fake_prob)} fake
@@ -397,7 +581,82 @@ export default function AnalyzePage() {
                     <span>{fmtTime(audioResult.duration || audioResult.timeline[audioResult.timeline.length - 1].end)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-6 mt-4 text-xs text-gray-400">
+
+                {/* Fake probability per chunk SVG chart */}
+                <div className="mb-4">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Chunk-Level Fake Probability</p>
+                  <div className="bg-black/30 rounded-xl p-3 border border-white/5">
+                    <svg viewBox="0 0 600 80" className="w-full" preserveAspectRatio="xMidYMid meet">
+                      {/* Background grid */}
+                      <line x1="30" y1="10" x2="590" y2="10" stroke="rgba(255,255,255,0.03)" />
+                      <line x1="30" y1="35" x2="590" y2="35" stroke="rgba(239,68,68,0.2)" strokeDasharray="3 3" />
+                      <line x1="30" y1="60" x2="590" y2="60" stroke="rgba(255,255,255,0.03)" />
+
+                      {/* Y-axis labels */}
+                      <text x="26" y="14" textAnchor="end" fontSize="7" className="fill-gray-500">100%</text>
+                      <text x="26" y="39" textAnchor="end" fontSize="7" className="fill-gray-500">50%</text>
+                      <text x="26" y="64" textAnchor="end" fontSize="7" className="fill-gray-500">0%</text>
+
+                      {/* Line chart */}
+                      {audioResult.timeline.length > 1 && (
+                        <polyline
+                          fill="none"
+                          stroke="url(#fakeGrad)"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          points={audioResult.timeline.map((seg, i) => {
+                            const x = 32 + (i / (audioResult.timeline.length - 1)) * 556;
+                            const y = 60 - seg.fake_prob * 50;
+                            return `${x},${y}`;
+                          }).join(" ")}
+                        />
+                      )}
+
+                      {/* Area fill */}
+                      {audioResult.timeline.length > 1 && (
+                        <polygon
+                          fill="url(#fakeArea)"
+                          opacity="0.3"
+                          points={[
+                            `32,60`,
+                            ...audioResult.timeline.map((seg, i) => {
+                              const x = 32 + (i / (audioResult.timeline.length - 1)) * 556;
+                              const y = 60 - seg.fake_prob * 50;
+                              return `${x},${y}`;
+                            }),
+                            `${32 + 556},60`,
+                          ].join(" ")}
+                        />
+                      )}
+
+                      {/* Dots */}
+                      {audioResult.timeline.map((seg, i) => {
+                        const x = 32 + (i / Math.max(audioResult.timeline.length - 1, 1)) * 556;
+                        const y = 60 - seg.fake_prob * 50;
+                        return (
+                          <circle key={i} cx={x} cy={y} r="3"
+                            fill={seg.label === "fake" ? "#ef4444" : "#22c55e"}
+                            stroke="rgba(0,0,0,0.5)" strokeWidth="1"
+                          />
+                        );
+                      })}
+
+                      <defs>
+                        <linearGradient id="fakeGrad" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#ef4444" />
+                          <stop offset="100%" stopColor="#f97316" />
+                        </linearGradient>
+                        <linearGradient id="fakeArea" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-6 text-xs text-gray-400">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-sm bg-red-500/80" />
                     <span>Fake / AI Generated</span>
@@ -406,7 +665,7 @@ export default function AnalyzePage() {
                     <div className="w-3 h-3 rounded-sm bg-green-500/80" />
                     <span>Authentic / Real</span>
                   </div>
-                  <span className="ml-auto text-gray-600">Hover segments for details</span>
+                  <span className="ml-auto text-gray-600">Opacity = confidence level</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mt-4">
                   <div className="text-center p-3 rounded-xl bg-red-500/5 border border-red-500/20">
@@ -470,7 +729,19 @@ export default function AnalyzePage() {
               </div>
             )}
 
-            <div className="flex gap-4">
+            {/* AI Debate Panel — also for audio */}
+            <DebatePanel analysisData={{
+              verdict: audioResult.verdict,
+              confidence: audioResult.confidence,
+              truth_score: Math.round(audioResult.real_prob * 100),
+              scores: [
+                { label: "FAKE", score: audioResult.fake_prob },
+                { label: "REAL", score: audioResult.real_prob },
+              ],
+              filename: file?.name || "audio_file",
+            }} />
+
+            <div className="flex gap-4 mt-6">
               <button onClick={resetAnalysis} className="flex-1 bg-[#111] border border-white/10 text-white py-4 rounded-2xl font-medium hover:bg-[#1a1a1a] transition-colors">
                 Analyze Another File
               </button>
@@ -525,6 +796,11 @@ export default function AnalyzePage() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Heatmap Timeline — auto-triggered with the same video file */}
+            <div className="mb-6">
+              <HeatmapTimeline videoFile={file} />
             </div>
 
             {/* AI Debate Panel — auto-triggered */}

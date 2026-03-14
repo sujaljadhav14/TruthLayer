@@ -72,10 +72,11 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
           {/* STEP 3: Full-screen loader overlay */}
           <div
             id="pageLoader"
+            suppressHydrationWarning
             style={{
               position: 'fixed',
-              top: 0,
-              left: 0,
+              top: '0px',
+              left: '0px',
               width: '100%',
               height: '100%',
               background: '#0a0a0a',
