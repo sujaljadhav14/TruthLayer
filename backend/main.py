@@ -81,10 +81,12 @@ app.add_middleware(
 # ── Register new routers (additive only) ────────────────────────────────
 from ai_debate.routes import router as debate_router
 from api.heatmap import router as heatmap_router
+from complaints.routes import router as complaints_router
 from reports.routes import router as report_router
 
 app.include_router(debate_router, prefix="/api")
 app.include_router(heatmap_router, prefix="/api")
+app.include_router(complaints_router, prefix="/api")
 app.include_router(report_router, prefix="/api")
 
 
