@@ -4,7 +4,7 @@ A forensic-grade deepfake detection platform that catches manipulated video and 
 
 Built for HackVerse Cybersecurity Challenge by **ByteDevs**.
 
-![Landing Page](docs/images/landing.png)
+![Landing Page](docs/images/landing.jpeg)
 
 ---
 
@@ -27,21 +27,15 @@ TruthLens is different. When you upload a suspicious file, you get:
 
 | Landing Page | Dashboard |
 |:---:|:---:|
-| ![Landing](docs/images/landing.png) | ![Dashboard](docs/images/dashboard.png) |
+| ![Landing](docs/images/landing.jpeg) | ![Dashboard](docs/images/dashboard.jpeg) |
 
 | Video Analysis | Audio Analysis |
 |:---:|:---:|
-| ![Video Result](docs/images/video-analysis.png) | ![Audio Result](docs/images/audio-analysis.png) |
+| ![Video Result](docs/images/video-analysis.jpeg) | ![Audio Result](docs/images/audio-analysis.jpeg) |
 
-| Grad-CAM Heatmap | Forensic Report |
-|:---:|:---:|
-| ![Heatmap](docs/images/heatmap.png) | ![Report](docs/images/forensic-report.png) |
-
-| AI Debate Panel | Complaint Filing |
-|:---:|:---:|
-| ![Debate](docs/images/debate-panel.png) | ![Complaint](docs/images/complaint.png) |
-
-> **Note:** Add your screenshots to `docs/images/` before pushing. Name them exactly as shown above.
+| Grad-CAM Heatmap |
+|:---:|
+| ![Heatmap](docs/images/heatmap.jpeg) |
 
 ---
 
