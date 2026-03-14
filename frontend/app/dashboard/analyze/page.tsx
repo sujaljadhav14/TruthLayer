@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import ForensicReport from "@/components/ForensicReport";
+import DebatePanel from "@/components/DebatePanel";
 import HeatmapTimeline, { HeatmapResult } from "@/components/HeatmapTimeline";
 
 /* ── Types ── */
@@ -735,6 +736,18 @@ export default function AnalyzePage() {
               audioData={audioResult}
             />
 
+            {/* AI Debate Panel */}
+            <DebatePanel analysisData={{
+              verdict: audioResult.verdict,
+              confidence: audioResult.confidence,
+              truth_score: Math.round(audioResult.real_prob * 100),
+              scores: [
+                { label: "FAKE", score: audioResult.fake_prob },
+                { label: "REAL", score: audioResult.real_prob },
+              ],
+              filename: file?.name || "audio_file",
+            }} />
+
             <div className="flex gap-4">
               <button onClick={resetAnalysis} className="flex-1 bg-[#111] border border-white/10 text-white py-4 rounded-2xl font-medium hover:bg-[#1a1a1a] transition-colors">
                 Analyze Another File
@@ -805,6 +818,9 @@ export default function AnalyzePage() {
                 </p>
               </div>
             )}
+
+            {/* AI Debate Panel */}
+            <DebatePanel analysisData={videoResult} />
 
             <div className="flex gap-4 mt-6">
               <button onClick={resetAnalysis} className="flex-1 bg-[#111] border border-white/10 text-white py-4 rounded-2xl font-medium hover:bg-[#1a1a1a] transition-colors">
