@@ -549,17 +549,17 @@ export default function AnalyzePage() {
                   <div className="flex rounded-xl overflow-hidden h-10 bg-white/5">
                     {audioResult.timeline.map((seg, i) => {
                       const total = audioResult.duration || audioResult.timeline[audioResult.timeline.length - 1].end;
-                      const widthPct = ((seg.end - seg.start) / total) * 100;
-                      const opacity = 0.4 + Math.abs(seg.fake_prob - 0.5) * 1.2; // higher confidence = more opaque
+                      const widthPct = Math.max(0, ((seg.end - seg.start) / total) * 100);
+                      const confOpacity = Math.max(0.2, Math.min(1, 0.4 + Math.abs((seg.fake_prob || 0) - 0.5) * 1.2));
                       return (
                         <div
                           key={i}
-                          className={`relative group h-full border-r border-black/20 last:border-r-0 transition-opacity hover:opacity-90 ${
+                          className={`relative group h-full border-r border-black/20 last:border-r-0 transition-all hover:opacity-100 ${
                             seg.label === "fake"
-                              ? "bg-gradient-to-b from-red-500 to-red-600"
-                              : "bg-gradient-to-b from-green-500 to-green-600"
+                              ? "bg-red-500"
+                              : "bg-green-500"
                           }`}
-                          style={{ width: `${widthPct}%`, minWidth: "2px", opacity }}
+                          style={{ width: `${widthPct}%`, minWidth: "2px", opacity: confOpacity }}
                         >
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black/95 border border-white/10 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                             <p className="text-white font-medium">{fmtTime(seg.start)} - {fmtTime(seg.end)}</p>
@@ -736,17 +736,7 @@ export default function AnalyzePage() {
               audioData={audioResult}
             />
 
-            {/* AI Debate Panel */}
-            <DebatePanel analysisData={{
-              verdict: audioResult.verdict,
-              confidence: audioResult.confidence,
-              truth_score: Math.round(audioResult.real_prob * 100),
-              scores: [
-                { label: "FAKE", score: audioResult.fake_prob },
-                { label: "REAL", score: audioResult.real_prob },
-              ],
-              filename: file?.name || "audio_file",
-            }} />
+            {/* AI Debate Panel removed for audio */}
 
             <div className="flex gap-4">
               <button onClick={resetAnalysis} className="flex-1 bg-[#111] border border-white/10 text-white py-4 rounded-2xl font-medium hover:bg-[#1a1a1a] transition-colors">
