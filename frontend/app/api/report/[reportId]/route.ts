@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 
 const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
 
@@ -7,8 +8,13 @@ export async function GET(
   { params }: { params: Promise<{ reportId: string }> }
 ) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { reportId } = await params;
-    const res = await fetch(`${FASTAPI_URL}/api/reports/${reportId}`, {
+    const res = await fetch(`${FASTAPI_URL}/api/reports/${reportId}?owner_id=${encodeURIComponent(userId)}`, {
       method: "GET",
       cache: "no-store",
     });

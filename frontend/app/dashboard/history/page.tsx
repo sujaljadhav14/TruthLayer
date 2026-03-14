@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   FileText,
   Loader2,
@@ -12,6 +13,9 @@ import {
   ShieldAlert,
   Activity,
   Waves,
+  Download,
+  Eye,
+  Siren,
 } from "lucide-react";
 
 type ReportRecord = {
@@ -77,12 +81,15 @@ function formatTime(ms: number) {
 }
 
 export default function HistoryPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<ReportPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPdf, setShowPdf] = useState(false);
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -94,7 +101,10 @@ export default function HistoryPage() {
         if (!res.ok) throw new Error(data.error || "Failed to load history");
         const nextReports = data.reports as ReportRecord[];
         setReports(nextReports);
-        if (nextReports[0]?.report_id) {
+        const requestedReportId = searchParams.get("reportId");
+        if (requestedReportId && nextReports.some((report) => report.report_id === requestedReportId)) {
+          setSelectedId(requestedReportId);
+        } else if (nextReports[0]?.report_id) {
           setSelectedId(nextReports[0].report_id);
         }
       } catch (err) {
@@ -105,7 +115,7 @@ export default function HistoryPage() {
     };
 
     void loadHistory();
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -130,6 +140,30 @@ export default function HistoryPage() {
 
     void loadDetail();
   }, [selectedId]);
+
+  useEffect(() => {
+    setShowPdf(false);
+  }, [selectedId]);
+
+  const downloadStoredPdf = async () => {
+    if (!selectedId) return;
+    try {
+      const res = await fetch(`/api/report/${selectedId}/pdf`, { cache: "no-store" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to download PDF");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${selectedReport?.analysis.filename?.split(".")[0] ?? "truthlens_report"}.pdf`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download PDF");
+    }
+  };
 
   const topHeatmap = selectedReport?.heatmap?.timeline
     ?.filter((entry) => entry.is_suspicious)
@@ -243,6 +277,44 @@ export default function HistoryPage() {
                   <MetricCard label="Generated" value={formatDate(selectedReport.certificate.issued_at)} icon={<Clock3 className="w-5 h-5" />} />
                   <MetricCard label="Certificate" value={selectedReport.certificate.certificate_id.slice(0, 12) + "..."} icon={<FileText className="w-5 h-5" />} />
                 </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => setShowPdf((current) => !current)}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-300 hover:bg-blue-500/15 transition-colors"
+                  >
+                    <Eye className="w-4 h-4" />
+                    {showPdf ? "Hide PDF" : "View PDF"}
+                  </button>
+                  <button
+                    onClick={downloadStoredPdf}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-gray-200 hover:bg-white/10 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download PDF
+                  </button>
+                  <button
+                    onClick={() => router.push(`/dashboard/complaint?reportId=${selectedId}`)}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/15 transition-colors"
+                  >
+                    <Siren className="w-4 h-4" />
+                    File Complaint
+                  </button>
+                </div>
+
+                {showPdf && selectedId && (
+                  <section className="rounded-3xl border border-white/10 bg-black/20 p-4">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <h3 className="text-lg font-bold text-white">Saved PDF Report</h3>
+                      <span className="text-xs text-gray-500">Inline preview of the stored report PDF</span>
+                    </div>
+                    <iframe
+                      src={`/api/report/${selectedId}/pdf`}
+                      title="Saved report PDF"
+                      className="w-full h-[720px] rounded-2xl border border-white/10 bg-white"
+                    />
+                  </section>
+                )}
 
                 {selectedReport.analysis.scores && selectedReport.analysis.scores.length > 0 && (
                   <section className="rounded-3xl border border-white/10 bg-black/20 p-6">

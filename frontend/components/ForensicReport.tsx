@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import Link from "next/link";
 import {
   FileText,
   Download,
@@ -72,6 +73,7 @@ export default function ForensicReport({ analysisData, audioData, heatmapData }:
   const [loading, setLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [cert, setCert] = useState<Certificate | null>(null);
+  const [reportId, setReportId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const isFake = analysisData.verdict === "FAKE";
@@ -143,6 +145,7 @@ export default function ForensicReport({ analysisData, audioData, heatmapData }:
       if (!res.ok) throw new Error((await res.json()).error || "Failed");
       const data = await res.json();
       setCert(data.certificate);
+      setReportId(data.report_record?.report_id ?? data.certificate?.certificate_id ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Report generation failed");
     } finally {
@@ -196,7 +199,7 @@ export default function ForensicReport({ analysisData, audioData, heatmapData }:
               className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-xl text-sm font-bold hover:bg-blue-500/20 transition-all disabled:opacity-50"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-              {loading ? "Generating..." : "Generate Certificate"}
+              {loading ? "Generating..." : "Generate & Save Report"}
             </button>
           )}
 
@@ -271,7 +274,7 @@ export default function ForensicReport({ analysisData, audioData, heatmapData }:
                 />
                 <CertRow
                   icon={<Lock className="w-3.5 h-3.5" />}
-                  label="HMAC Signature"
+                  label="Digital Signature"
                   value={cert.signature.slice(0, 24) + "..."}
                   mono
                   full
@@ -293,7 +296,7 @@ export default function ForensicReport({ analysisData, audioData, heatmapData }:
                 disabled={loading}
                 className="flex-1 bg-white/5 border border-white/10 text-gray-400 py-2.5 rounded-xl text-sm hover:bg-white/10 transition-colors"
               >
-                Regenerate Certificate
+                Regenerate Report
               </button>
               <button
                 onClick={downloadPDF}
@@ -304,6 +307,23 @@ export default function ForensicReport({ analysisData, audioData, heatmapData }:
                 Download PDF Report
               </button>
             </div>
+
+            {reportId && (
+              <div className="grid md:grid-cols-2 gap-3">
+                <Link
+                  href={`/dashboard/history?reportId=${reportId}`}
+                  className="text-center bg-white/5 border border-white/10 text-gray-200 py-2.5 rounded-xl text-sm hover:bg-white/10 transition-colors"
+                >
+                  Open In Report History
+                </Link>
+                <Link
+                  href={`/dashboard/complaint?reportId=${reportId}`}
+                  className="text-center bg-red-500/10 border border-red-500/20 text-red-300 py-2.5 rounded-xl text-sm hover:bg-red-500/15 transition-colors"
+                >
+                  Use This Report For Complaint
+                </Link>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
