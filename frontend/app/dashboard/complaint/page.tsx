@@ -214,17 +214,32 @@ export default function ComplaintPage() {
   }, [report?.analysis.filename, report?.analysis.verdict]);
 
   const mailBody = useMemo(() => {
-    return [
+    const baseContent = [
       complaintNarrative,
-      "",
-      "Linked forensic evidence:",
-      `Shared report page: ${sharedReportLinks.reportPage || "Unavailable"}`,
-      `Shared PDF report: ${sharedReportLinks.pdfPage || "Unavailable"}`,
-      "",
-      `Certificate ID: ${report?.certificate.certificate_id ?? "Unavailable"}`,
-      `File hash: ${report?.certificate.file_hash ?? "Unavailable"}`,
-    ].join("\n");
-  }, [complaintNarrative, report?.certificate.certificate_id, report?.certificate.file_hash, sharedReportLinks.pdfPage, sharedReportLinks.reportPage]);
+    ];
+
+    if (incidentDate || platform || location || suspectUrl || incidentNotes) {
+      baseContent.push("");
+      baseContent.push("Incident Details:");
+      if (incidentDate) baseContent.push(`Date: ${incidentDate}`);
+      if (platform) baseContent.push(`Platform: ${platform}`);
+      if (location) baseContent.push(`Location: ${location}`);
+      if (suspectUrl) baseContent.push(`Suspicious URL: ${suspectUrl}`);
+      if (incidentNotes) baseContent.push(`Notes: ${incidentNotes}`);
+    }
+
+    if (reportId) {
+      baseContent.push("");
+      baseContent.push("Linked forensic evidence:");
+      baseContent.push(`Shared report page: ${sharedReportLinks.reportPage || "Pending Submission"}`);
+      baseContent.push(`Shared PDF report: ${sharedReportLinks.pdfPage || "Pending Submission"}`);
+      baseContent.push("");
+      baseContent.push(`Certificate ID: ${report?.certificate.certificate_id ?? "Loading..."}`);
+      baseContent.push(`File hash: ${report?.certificate.file_hash ?? "Loading..."}`);
+    }
+
+    return baseContent.join("\n");
+  }, [complaintNarrative, incidentDate, platform, location, suspectUrl, incidentNotes, reportId, report?.certificate.certificate_id, report?.certificate.file_hash, sharedReportLinks.pdfPage, sharedReportLinks.reportPage]);
 
   const recipientList = recipientEmail
     .split(",")
@@ -254,12 +269,12 @@ export default function ComplaintPage() {
     }
   };
 
-  const createComplaintRecord = async (status: "draft" | "email_prepared" | "submitted") => {
+  const createComplaintRecord = async (status: "draft" | "email_prepared" | "submitted", emailOverride?: string) => {
     if (!reportId || !report) return null;
 
     const payload = {
       report_id: reportId,
-      recipient_email: recipientEmail,
+      recipient_email: emailOverride || recipientEmail || "sujal.jadhav2627@gmail.com",
       cc_email: complainantEmail || null,
       subject: emailSubject,
       narrative: complaintNarrative,
@@ -295,22 +310,17 @@ export default function ComplaintPage() {
   };
 
   const openEmailDraft = async () => {
-    if (!recipientEmail) {
-      setError("Enter the authority email address before preparing the complaint email.");
-      return;
-    }
+    const targetEmail = recipientList || "sujal.jadhav2627@gmail.com";
 
     try {
       setSubmitting(true);
-      await createComplaintRecord("email_prepared");
-      const params = new URLSearchParams({
-        subject: emailSubject,
-        body: mailBody,
-      });
+      await createComplaintRecord("email_prepared", targetEmail);
+      
+      let mailto = `mailto:${targetEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(mailBody)}`;
       if (complainantEmail) {
-        params.set("cc", complainantEmail);
+        mailto += `&cc=${encodeURIComponent(complainantEmail)}`;
       }
-      const mailto = `mailto:${recipientList}?${params.toString()}`;
+      
       window.location.href = mailto;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to prepare complaint email");
