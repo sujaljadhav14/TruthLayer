@@ -7,7 +7,6 @@ import {
   ScanEye,
   Home,
   UploadCloud,
-  FileSearch,
   History,
   AlertTriangle,
   BookOpen,
@@ -22,7 +21,6 @@ export default function Sidebar() {
   const navItems = [
     { name: "Home", href: "/dashboard", icon: Home },
     { name: "New Analysis", href: "/dashboard/analyze", icon: UploadCloud },
-    { name: "Results Dashboard", href: "/dashboard/results", icon: FileSearch },
     { name: "Reports History", href: "/dashboard/history", icon: History },
     { name: "File Complaint", href: "/dashboard/complaint", icon: AlertTriangle },
   ];

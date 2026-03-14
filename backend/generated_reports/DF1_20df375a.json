@@ -1,0 +1,39 @@
+{
+  "certificate": {
+    "certificate_id": "20df375a-a3fd-449a-91d4-2506e2d7c4a9",
+    "issued_at": "2026-03-14T01:18:49.251048+00:00",
+    "filename": "DF1.mp4",
+    "verdict": "FAKE",
+    "confidence": 99.21,
+    "truth_score": 0,
+    "suspicious_frame_count": null,
+    "total_frames_analyzed": null,
+    "audio_label": null,
+    "audio_fake_prob": null,
+    "audio_real_prob": null,
+    "file_hash": "a3fb9b69fb14c06af4d2d61d5976b6c7ac935293a489bd6c28d5376a097da7c2",
+    "signature": "bbc473afc2e8fcdcc38c98a2333a8ded1e6782163308875073cb067accf08b32",
+    "algorithm": "HMAC-SHA256",
+    "summary": "Forensic analysis completed for DF1.mp4. The model classified the media as manipulated with 99.2% confidence.",
+    "issuer": "TruthLens Forensic AI - HackVerse 2025"
+  },
+  "analysis": {
+    "verdict": "FAKE",
+    "confidence": 99.21,
+    "truth_score": 0,
+    "scores": [
+      {
+        "label": "FAKE",
+        "score": 0.992062509059906
+      },
+      {
+        "label": "REAL",
+        "score": 0.007937422953546047
+      }
+    ],
+    "filename": "DF1.mp4"
+  },
+  "audio": null,
+  "heatmap": null,
+  "report_type": "forensic_analysis_v1"
+}

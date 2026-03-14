@@ -1,0 +1,170 @@
+{
+  "certificate": {
+    "certificate_id": "72b3e76d-4e68-4aa8-9350-c17fce23619f",
+    "issued_at": "2026-03-14T01:47:24.916812+00:00",
+    "filename": "DF1.mp4",
+    "verdict": "FAKE",
+    "confidence": 98.61,
+    "truth_score": 1,
+    "suspicious_frame_count": 7,
+    "total_frames_analyzed": 20,
+    "audio_label": null,
+    "audio_fake_prob": null,
+    "audio_real_prob": null,
+    "file_hash": "b099be23851d948d5d8a157413e846c8726e1cf63fdcf143e087f7f35d94f2f7",
+    "signature": "uIQBVmffR9r8lstDMcgjhSuDRweaBhGRHCHt/n4PSgMOBojlqmI1gEsizcRJveYwWIHtNwDqf1Ty8wvC6bT6DQ==",
+    "algorithm": "Ed25519",
+    "public_key_path": "D:\\Watumull\\hackverse-cybersecurity-wc01_bytedevs\\backend\\generated_reports\\certificate_public_key.pem",
+    "summary": "Forensic analysis completed for DF1.mp4. The model classified the media as manipulated with 98.6% confidence. Heatmap review flagged 7 of 20 sampled frames as suspicious.",
+    "issuer": "TruthLens Forensic AI - HackVerse 2025"
+  },
+  "analysis": {
+    "verdict": "FAKE",
+    "confidence": 98.61,
+    "truth_score": 1,
+    "scores": [
+      {
+        "label": "FAKE",
+        "score": 0.986108124256134
+      },
+      {
+        "label": "REAL",
+        "score": 0.01389189064502716
+      }
+    ],
+    "filename": "DF1.mp4"
+  },
+  "audio": null,
+  "heatmap": {
+    "verdict": "FAKE",
+    "confidence": 99.21,
+    "truth_score": 0,
+    "filename": "DF1.mp4",
+    "duration_ms": 24083,
+    "total_frames_analyzed": 20,
+    "suspicious_frame_count": 7,
+    "timeline": [
+      {
+        "frame_index": 0,
+        "timestamp_ms": 0,
+        "fake_score": 0.5382,
+        "is_suspicious": true
+      },
+      {
+        "frame_index": 1,
+        "timestamp_ms": 1204,
+        "fake_score": 0.1722,
+        "is_suspicious": false
+      },
+      {
+        "frame_index": 2,
+        "timestamp_ms": 2408,
+        "fake_score": 0.112,
+        "is_suspicious": false
+      },
+      {
+        "frame_index": 3,
+        "timestamp_ms": 3612,
+        "fake_score": 0.8172,
+        "is_suspicious": true
+      },
+      {
+        "frame_index": 4,
+        "timestamp_ms": 4816,
+        "fake_score": 0.9921,
+        "is_suspicious": true
+      },
+      {
+        "frame_index": 5,
+        "timestamp_ms": 6020,
+        "fake_score": 0.1878,
+        "is_suspicious": false
+      },
+      {
+        "frame_index": 6,
+        "timestamp_ms": 7224,
+        "fake_score": 0.3263,
+        "is_suspicious": false
+      },
+      {
+        "frame_index": 7,
+        "timestamp_ms": 8429,
+        "fake_score": 0.3208,
+        "is_suspicious": false
+      },
+      {
+        "frame_index": 8,
+        "timestamp_ms": 9633,
+        "fake_score": 0.4021,
+        "is_suspicious": false
+      },
+      {
+        "frame_index": 9,
+        "timestamp_ms": 10837,
+        "fake_score": 0.8439,
+        "is_suspicious": true
+      },
+      {
+        "frame_index": 10,
+        "timestamp_ms": 12041,
+        "fake_score": 0.2518,
+        "is_suspicious": false
+      },
+      {
+        "frame_index": 11,
+        "timestamp_ms": 13245,
+        "fake_score": 0,
+        "is_suspicious": false
+      },
+      {
+        "frame_index": 12,
+        "timestamp_ms": 14449,
+        "fake_score": 0.5239,
+        "is_suspicious": true
+      },
+      {
+        "frame_index": 13,
+        "timestamp_ms": 15653,
+        "fake_score": 0.5284,
+        "is_suspicious": true
+      },
+      {
+        "frame_index": 14,
+        "timestamp_ms": 16858,
+        "fake_score": 0.4637,
+        "is_suspicious": false
+      },
+      {
+        "frame_index": 15,
+        "timestamp_ms": 18062,
+        "fake_score": 0.295,
+        "is_suspicious": false
+      },
+      {
+        "frame_index": 16,
+        "timestamp_ms": 19266,
+        "fake_score": 0.3719,
+        "is_suspicious": false
+      },
+      {
+        "frame_index": 17,
+        "timestamp_ms": 20470,
+        "fake_score": 0.2805,
+        "is_suspicious": false
+      },
+      {
+        "frame_index": 18,
+        "timestamp_ms": 21674,
+        "fake_score": 0.5893,
+        "is_suspicious": true
+      },
+      {
+        "frame_index": 19,
+        "timestamp_ms": 22878,
+        "fake_score": 0.3261,
+        "is_suspicious": false
+      }
+    ]
+  },
+  "report_type": "forensic_analysis_v1"
+}

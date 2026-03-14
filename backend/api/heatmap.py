@@ -21,9 +21,9 @@ router = APIRouter(tags=["Heatmap"])
 def _get_globals():
     """Import globals from main.py at request time to avoid circular imports."""
     import main as m
-    if m.MODEL is None or m.PROCESSOR is None:
-        m.load_model_once()
-    return m.MODEL, m.PROCESSOR, m.TORCH_MOD, m.F_MODULE
+    if m.VIDEO_MODEL is None or m.VIDEO_PROCESSOR is None:
+        m.load_video_model()
+    return m.VIDEO_MODEL, m.VIDEO_PROCESSOR, m.TORCH_MOD, m.F_MODULE
 
 
 def _extract_raw_frames(video_path: str, num_frames: int = 20) -> list[np.ndarray]:

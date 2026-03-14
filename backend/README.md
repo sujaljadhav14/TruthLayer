@@ -1,83 +1,59 @@
-# TruthLens — Backend (DeepFake Detection API)
+# TruthLens Backend
 
-FastAPI server wrapping a ResNext50 + LSTM deepfake detection model.
+FastAPI backend for video deepfake detection, audio forensic analysis, video heatmap generation, report generation, saved report retrieval, and digital certificate verification.
 
-## Quick Setup (Windows)
+## Implemented API Surface
 
-**Option A — Run the setup script:**
-```
-Double-click setup.bat
-```
+### Core Analysis
+- `POST /analyze` - video verdict and score breakdown
+- `POST /analyze-audio` - audio forensic analysis
+- `POST /api/heatmap` - frame-level video heatmap timeline
+- `GET /health` - health and model readiness
 
-**Option B — Manual setup in CMD:**
+### Reports
+- `POST /api/report/generate` - save JSON report + certificate
+- `POST /api/report/pdf` - save JSON report and return PDF
+- `POST /api/report/verify` - verify certificate signature
+- `GET /api/reports` - list saved reports
+- `GET /api/reports/{report_id}` - fetch one saved report payload
+
+## Certificate Implementation
+
+The current certificate flow uses:
+- canonical JSON payload
+- SHA-256 payload hashing
+- Ed25519 digital signatures via `cryptography`
+- generated public key stored with report artifacts for verification
+
+## Current Gaps
+
+- No database storage yet; reports are stored as files in `backend/generated_reports`
+- No audio spectrogram heatmap endpoint yet
+- No ZIP/CSV export endpoints yet
+- No background worker for long-running report or heatmap jobs
+
+## Quick Setup
+
 ```cmd
 cd backend
 python -m venv venv
 .\venv\Scripts\activate.bat
 pip install -r requirements.txt
-```
-
-## Configure Environment
-
-Copy the example env file and add the HuggingFace token:
-```cmd
 copy .env.example .env
-```
-
-Then edit `.env` and set your token:
-```
-HF_TOKEN=hf_your_token_here
-```
-
-Get a free token at: https://huggingface.co/settings/tokens
-
-## Run the Server
-
-```cmd
-.\venv\Scripts\activate.bat
 python main.py
 ```
 
-First run will download model weights (~226 MB) from HuggingFace automatically.
-Server starts at `http://localhost:8000`.
+## Required Environment
 
-## API
+Set at least:
 
-**POST /analyze** — Upload a video for deepfake detection
-```
-curl -X POST http://localhost:8000/analyze -F "file=@video.mp4"
-```
-
-Response:
-```json
-{
-  "verdict": "FAKE",
-  "confidence": 93.42,
-  "truth_score": 7,
-  "scores": [
-    {"label": "FAKE", "score": 0.9342},
-    {"label": "REAL", "score": 0.0658}
-  ],
-  "filename": "video.mp4"
-}
+```env
+HF_TOKEN=hf_your_token_here
+MODEL_ID=tayyabimam/Deepfake
 ```
 
-**GET /health** — Check if server and model are ready
+## Notes
 
-## Dependencies
-
-Only these are needed (no dlib or face_recognition required):
-- `torch` + `torchvision` — Neural network inference
-- `opencv-python` — Video reading + face detection (Haar Cascade)
-- `fastapi` + `uvicorn` — API server
-- `huggingface_hub` — Auto-download model weights
-- `numpy`, `Pillow` — Image processing
-
-## Troubleshooting
-
-| Issue | Fix |
-|-------|-----|
-| `activate.ps1 cannot be loaded` | Use CMD instead of PowerShell, run `.\venv\Scripts\activate.bat` |
-| `pip install` asks for dlib | You have wrong requirements. Use the `requirements.txt` in this folder only |
-| Model download fails | Check your `HF_TOKEN` in `.env` is valid |
-| `CUDA out of memory` | Model runs on CPU by default, no GPU needed |
+- FFmpeg is required for audio analysis
+- First run downloads the video model weights
+- Generated reports, PDFs, and signing keys are stored inside `backend/generated_reports`

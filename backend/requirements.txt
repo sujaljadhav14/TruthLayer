@@ -22,5 +22,8 @@ librosa>=0.10.0
 scipy>=1.11.0
 soundfile>=0.12.1
 ffmpeg-python
-webrtcvad
-resemblyzer
+
+# Forensic Reports (Phase 4)
+fpdf2>=2.7.0
+qrcode[pil]>=7.4.2
+cryptography>=42.0.0

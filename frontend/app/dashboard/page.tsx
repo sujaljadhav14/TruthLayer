@@ -84,7 +84,7 @@ export default function DashboardHome() {
               </div>
               <h2 className="text-2xl font-bold text-white mb-3">View Previous Reports</h2>
               <p className="text-gray-400 text-sm mb-8 leading-relaxed">
-                Access your forensic history, download PDF reports, and review past AI agent debates.
+                Access saved forensic history, inspect heatmap findings, and download PDF reports.
               </p>
               <div className="flex items-center gap-2 text-sm font-bold text-gray-300 tracking-wide group-hover:gap-4 transition-all">
                 View All <ArrowRight className="w-4 h-4" />
