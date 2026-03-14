@@ -12,7 +12,7 @@ export default function HowItWorks() {
           <div className="text-xs font-bold tracking-widest text-green-500 uppercase mb-4 border border-green-500/30 inline-block px-2 py-1 rounded">How it works</div>
           <h2 className="text-4xl md:text-5xl font-bold mb-6">Forensic analysis in three steps</h2>
           <p className="text-gray-400 mb-8">
-            Upload any suspicious media and let our AI agents uncover the truth.
+            Upload suspicious media and inspect model evidence, heatmaps, and saved forensic reports.
           </p>
           <Link href="/dashboard" className="btn-green inline-block px-6 py-3 rounded bg-green-500/10 border border-green-500 text-green-500 font-medium hover:bg-green-500 hover:text-black transition-all">
             Start Analysis
@@ -29,7 +29,7 @@ export default function HowItWorks() {
           >
             <h3 className="text-2xl font-bold mb-4">1. Upload Media or Paste Link</h3>
             <p className="text-gray-400 text-sm mb-8">
-              Upload a video, audio file, or image. You can also paste a link from YouTube, Instagram, or X, and we'll download it for analysis.
+              Upload a video, audio file, or image. You can also paste a link from YouTube, Instagram, or X, and we&apos;ll download it for analysis.
             </p>
             <div className="bg-black rounded-xl p-8 border border-white/5 flex flex-col items-center justify-center text-gray-500 border-dashed">
               <UploadCloud className="w-10 h-10 mb-4 text-green-500/70" />
@@ -65,7 +65,7 @@ export default function HowItWorks() {
           >
             <h3 className="text-2xl font-bold mb-4">3. Verdict & Evidence Report</h3>
             <p className="text-gray-400 text-sm mb-8">
-              Two AI agents debate the findings to produce a final Truth Score. View the interactive timeline and download a forensic PDF report.
+              Review the integrated heatmap timeline, then generate a forensic PDF report and cryptographically signed certificate.
             </p>
             <div className="space-y-3">
               <div className="flex items-center gap-4 bg-black p-3 rounded-lg border border-white/5">

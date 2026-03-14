@@ -132,9 +132,9 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
             @keyframes loaderSpin { to { transform: rotate(360deg); } }
           `}} />
 
-          {/* STEP 3: Hide loader as soon as first paint is ready.
-              Uses DOMContentLoaded (faster) instead of load (waits for all assets).
-              Opacity fade gives a smooth 300ms transition, then display:none frees the layer. */}
+          {/* STEP 3: Hide loader after React has hydrated.
+              Uses window 'load' event so it fires after React hydration,
+              avoiding DOM mutation before hydration completes. */}
           <script dangerouslySetInnerHTML={{__html: `
             (function() {
               function hideLoader() {
@@ -145,10 +145,10 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
                   setTimeout(function() { el.style.display = 'none'; }, 400);
                 }
               }
-              if (document.readyState !== 'loading') {
+              if (document.readyState === 'complete') {
                 hideLoader();
               } else {
-                document.addEventListener('DOMContentLoaded', hideLoader);
+                window.addEventListener('load', hideLoader);
               }
             })();
           `}} />

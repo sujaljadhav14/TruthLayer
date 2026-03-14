@@ -1,80 +1,78 @@
-# TruthLens - DeepFake Detection Platform
+# TruthLens - Deepfake Detection Platform
 
-A forensic deepfake detection platform that combines deep learning video analysis with an AI-powered adversarial debate system to deliver transparent, explainable verdicts.
+TruthLens is a forensic media analysis platform for video and audio deepfake detection. It currently provides model verdicts, frame-level heatmap review for video, forensic PDF/JSON reports, saved report history, and cryptographically signed digital certificates.
 
-<!-- Add your screenshots here -->
-<!-- ![Dashboard](docs/images/dashboard.png) -->
-<!-- ![Analysis Result](docs/images/analysis.png) -->
-<!-- ![AI Debate](docs/images/debate.png) -->
+## What Is Implemented
 
-## Features
-
-### Video Deepfake Detection
-- Upload any video file (MP4, AVI, MOV)
-- Analyzed using a ResNeXt-50 + LSTM neural network trained on deepfake datasets
-- Returns verdict (REAL/FAKE), confidence score, and truth score
-- Per-label score breakdown (FAKE vs REAL probabilities)
-
-### AI Forensic Debate System
-- Automatically triggered after every analysis
-- 3-round adversarial debate between AI Prosecutor and Defender
-- Prosecutor argues the video is manipulated, citing technical evidence
-- Defender argues authenticity, providing counter-explanations
-- AI Judge delivers a final verdict with reasoning and key evidence
-- Powered by local Ollama (llama3) for privacy and zero API costs
-- One-click "Copy Forensic Report" button for clean exportable summary
+### Video Analysis
+- Upload video files and run ResNeXt-50 + LSTM inference
+- Return `REAL` / `FAKE`, confidence, truth score, and score breakdown
+- Run integrated Grad-CAM heatmap analysis inside the video result view
+- Save heatmap summary data into generated reports
 
 ### Audio Analysis
-- Extracts and analyzes audio track from uploaded media
-- Spectral and temporal feature analysis using librosa
-- Detects audio manipulation artifacts
+- Upload audio files and run the current audio forensic detector
+- Return verdict, fake/real probabilities, source-tool estimate, and signal metrics
+- Include audio findings in saved forensic reports
 
-### Authentication
-- User sign-in/sign-up via Clerk
-- Protected dashboard routes
+### Reports and History
+- Generate forensic JSON reports and PDF reports
+- Save generated reports in `backend/generated_reports`
+- Browse saved reports in `/dashboard/history`
+- View saved analysis, heatmap findings, audio findings, and certificate details
+
+### Digital Certificate
+- Each generated report includes a SHA-256 payload hash
+- Each certificate is signed with Ed25519 using the `cryptography` library
+- Certificates can be verified through the backend verification route
+
+## What Was Removed
+- The extra AI prosecutor/defender/judge verdict is no longer part of the active product flow
+- The separate standalone heatmap analyzer tab has been removed from the analysis page
+- Heatmap is now part of the video analysis result itself
+
+## Partially Implemented
+- Heatmap timeline and suspicious timestamp summary are implemented
+- Full export formats like CSV/ZIP are not implemented yet
+- Report storage exists on disk, but there is no database-backed case management yet
+
+## Not Implemented Yet
+- Audio spectrogram heatmap visualization
+- Comparison page
+- Complaint filing flow
+- Background job processing / async heatmap generation
+- Database-backed report storage
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js 15, React 19, TypeScript |
-| Styling | Tailwind CSS 4, Motion (Framer Motion) |
+| Styling | Tailwind CSS 4, Motion |
 | Auth | Clerk |
 | Backend | FastAPI, Uvicorn |
 | ML Model | PyTorch, ResNeXt-50 + LSTM |
-| AI Debate | Ollama (llama3), httpx |
-| Audio | librosa, scipy, soundfile |
+| Audio | librosa, scipy, transformers, torchaudio |
+| Reports | fpdf2, qrcode, cryptography |
 | Model Hub | HuggingFace Hub |
 
 ## Project Structure
 
-```
+```text
 backend/
-  main.py              # FastAPI server entry point
+  main.py
+  api/heatmap.py
   model/
-    detector.py        # ResNeXt-50 + LSTM deepfake detector
-    processor.py       # Video frame extraction and preprocessing
-  ai_debate/
-    debate_engine.py   # 3-round debate orchestrator
-    ollama_client.py   # Ollama LLM client
-    prompts.py         # Prosecutor/Defender/Judge system prompts
-    routes.py          # /api/debate endpoints
-  audio_analyzer/
-    preprocessor.py    # Audio feature extraction
-    models.py          # Data models
-    routes.py          # /api/audio endpoints
-  .env.example         # Environment variable template
+  audio/
+  reports/
+  generated_reports/
 
 frontend/
-  app/
-    dashboard/
-      analyze/page.tsx # Main analysis page (upload + results + debate)
-    api/
-      analyze/route.ts # Proxy to FastAPI /analyze
-      debate/route.ts  # Proxy to FastAPI /api/debate
-  components/
-    DebatePanel.tsx    # AI debate UI with report export
-    AudioPanel.tsx     # Audio analysis UI
+  app/dashboard/analyze/page.tsx
+  app/dashboard/history/page.tsx
+  app/api/report/
+  components/HeatmapTimeline.tsx
+  components/ForensicReport.tsx
 ```
 
 ## Setup
@@ -82,72 +80,36 @@ frontend/
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- Ollama installed and running (https://ollama.com)
+- FFmpeg available on the machine
 
-### 1. Clone the repo
-```bash
-git clone https://github.com/Hackverse-Cybersecurity/hackverse-cybersecurity-wc01_bytedevs.git
-cd hackverse-cybersecurity-wc01_bytedevs
-```
-
-### 2. Backend setup
+### Backend
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # macOS/Linux
-
+venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env
-# Edit .env and add your HuggingFace token
-```
-
-### 3. Ollama setup (for AI Debate)
-```bash
-ollama pull llama3
-ollama serve
-```
-
-### 4. Frontend setup
-```bash
-cd frontend
-npm install
-```
-
-### 5. Run
-Terminal 1 (backend):
-```bash
-cd backend
+copy .env.example .env
 python main.py
 ```
 
-Terminal 2 (frontend):
+### Frontend
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
 
-Open http://localhost:3000
+Open `http://localhost:3000`.
 
-## Environment Variables
+## Main User Flow
 
-### Backend (`backend/.env`)
-```
-HF_TOKEN=your_huggingface_token
-MODEL_ID=tayyabimam/Deepfake
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3
-```
+1. Upload video or audio in `/dashboard/analyze`
+2. Review verdict and forensic evidence
+3. For video, inspect the integrated frame heatmap timeline
+4. Generate a certificate or PDF report
+5. Open `/dashboard/history` to review all saved reports
 
-## How It Works
-
-1. User uploads a video on the dashboard
-2. Backend extracts frames, runs them through ResNeXt-50 + LSTM model
-3. Returns REAL/FAKE verdict with confidence scores
-4. AI Debate auto-starts: Ollama runs 3 rounds of Prosecutor vs Defender
-5. Judge AI analyzes the debate transcript and delivers a final verdict
-6. User can copy the full forensic report for documentation
-
-## Team
-
-**ByteDevs** - Hackverse Cybersecurity Challenge WC01
+## Notes
+- Model weights are downloaded from HuggingFace on first backend startup
+- Generated reports are saved locally under `backend/generated_reports`
+- The public key for report signature verification is generated alongside report artifacts

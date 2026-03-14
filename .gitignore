@@ -21,6 +21,11 @@ backend/tmp/
 backend/uploads/
 *.tmp
 
+# Generated reports (created at runtime)
+backend/generated_reports/*.json
+backend/generated_reports/*.pdf
+backend/generated_reports/*.pem
+
 # OS
 .DS_Store
 Thumbs.db

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser, useClerk } from "@clerk/nextjs";
@@ -7,22 +8,23 @@ import {
   ScanEye,
   Home,
   UploadCloud,
-  FileSearch,
   History,
   AlertTriangle,
   BookOpen,
   LogOut
 } from "lucide-react";
 
+const emptySubscribe = () => () => {};
+
 export default function Sidebar() {
   const pathname = usePathname();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   const navItems = [
     { name: "Home", href: "/dashboard", icon: Home },
     { name: "New Analysis", href: "/dashboard/analyze", icon: UploadCloud },
-    { name: "Results Dashboard", href: "/dashboard/results", icon: FileSearch },
     { name: "Reports History", href: "/dashboard/history", icon: History },
     { name: "File Complaint", href: "/dashboard/complaint", icon: AlertTriangle },
   ];
@@ -72,8 +74,7 @@ export default function Sidebar() {
 
       <div className="p-4 border-t border-white/5 space-y-3">
         <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-[#111]">
-          {/* STEP 2: Lazy load - defer offscreen avatar fetch until needed */}
-          {user?.imageUrl ? (
+          {mounted && user?.imageUrl ? (
             <img
               src={user.imageUrl}
               alt="Profile"
@@ -82,15 +83,15 @@ export default function Sidebar() {
             />
           ) : (
             <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 font-bold text-sm border border-green-500/30">
-              {user?.firstName?.[0] ?? "?"}
+              {mounted ? (user?.firstName?.[0] ?? "?") : "?"}
             </div>
           )}
           <div className="overflow-hidden flex-1">
             <p className="text-sm font-bold text-white truncate">
-              {user?.fullName ?? "User"}
+              {mounted ? (user?.fullName ?? "User") : "User"}
             </p>
             <p className="text-xs text-gray-500 truncate">
-              {user?.primaryEmailAddress?.emailAddress ?? ""}
+              {mounted ? (user?.primaryEmailAddress?.emailAddress ?? "") : ""}
             </p>
           </div>
         </div>

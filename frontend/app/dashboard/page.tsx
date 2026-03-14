@@ -1,14 +1,19 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { motion } from "motion/react";
 import { ArrowRight, FileSearch, History, Zap, ShieldCheck, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 
+const emptySubscribe = () => () => {};
+
 export default function DashboardHome() {
   const { user } = useUser();
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   const getGreeting = () => {
+    if (!mounted) return "Welcome";
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
     if (hour < 17) return "Good Afternoon";
@@ -24,7 +29,7 @@ export default function DashboardHome() {
           animate={{ opacity: 1, y: 0 }}
           className="text-3xl font-bold text-white mb-2 flex items-center justify-center gap-2"
         >
-          {getGreeting()}, {user?.firstName ?? "User"}!
+          {getGreeting()}, {mounted ? (user?.firstName ?? "User") : "User"}!
         </motion.h1>
         <motion.p 
           initial={{ opacity: 0 }}
@@ -84,7 +89,7 @@ export default function DashboardHome() {
               </div>
               <h2 className="text-2xl font-bold text-white mb-3">View Previous Reports</h2>
               <p className="text-gray-400 text-sm mb-8 leading-relaxed">
-                Access your forensic history, download PDF reports, and review past AI agent debates.
+                Access saved forensic history, inspect heatmap findings, and download PDF reports.
               </p>
               <div className="flex items-center gap-2 text-sm font-bold text-gray-300 tracking-wide group-hover:gap-4 transition-all">
                 View All <ArrowRight className="w-4 h-4" />

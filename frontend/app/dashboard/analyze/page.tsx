@@ -23,8 +23,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
-import DebatePanel from "@/components/DebatePanel";
-import HeatmapTimeline from "@/components/HeatmapTimeline";
+import ForensicReport from "@/components/ForensicReport";
+import HeatmapTimeline, { HeatmapResult } from "@/components/HeatmapTimeline";
 
 /* ── Types ── */
 
@@ -121,10 +121,9 @@ export default function AnalyzePage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [videoResult, setVideoResult] = useState<VideoResult | null>(null);
   const [audioResult, setAudioResult] = useState<AudioResult | null>(null);
+  const [heatmapResult, setHeatmapResult] = useState<HeatmapResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
-
-  const result = mode === "video" ? videoResult : audioResult;
 
   /* ── Drag & Drop ── */
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -142,9 +141,9 @@ export default function AnalyzePage() {
       if (!f) return;
 
       if (mode === "video" && f.type.startsWith("video/")) {
-        setFile(f); setVideoResult(null); setAudioResult(null); setError(null);
+        setFile(f); setVideoResult(null); setAudioResult(null); setHeatmapResult(null); setError(null);
       } else if (mode === "audio" && isAudioFile(f)) {
-        setFile(f); setVideoResult(null); setAudioResult(null); setError(null);
+        setFile(f); setVideoResult(null); setAudioResult(null); setHeatmapResult(null); setError(null);
       } else {
         setError(mode === "video"
           ? "Please upload a video file (MP4, AVI, MOV)."
@@ -156,13 +155,13 @@ export default function AnalyzePage() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) { setFile(f); setVideoResult(null); setAudioResult(null); setError(null); }
+    if (f) { setFile(f); setVideoResult(null); setAudioResult(null); setHeatmapResult(null); setError(null); }
   };
 
   /* ── Analyze ── */
   const handleAnalyze = async () => {
     if (!file) return;
-    setAnalyzing(true); setError(null); setVideoResult(null); setAudioResult(null); setProgress(0);
+    setAnalyzing(true); setError(null); setVideoResult(null); setAudioResult(null); setHeatmapResult(null); setProgress(0);
 
     const progressInterval = setInterval(() => {
       setProgress((p) => (p >= 90 ? p : p + Math.random() * 8));
@@ -197,7 +196,7 @@ export default function AnalyzePage() {
   };
 
   const resetAnalysis = () => {
-    setFile(null); setVideoResult(null); setAudioResult(null); setError(null); setProgress(0);
+    setFile(null); setVideoResult(null); setAudioResult(null); setHeatmapResult(null); setError(null); setProgress(0);
   };
 
   const switchMode = (m: MediaMode) => {
@@ -209,8 +208,8 @@ export default function AnalyzePage() {
   const isFake = audioResult
     ? audioResult.label === "fake"
     : videoResult
-    ? videoResult.verdict === "FAKE"
-    : false;
+      ? videoResult.verdict === "FAKE"
+      : false;
 
   /* ── Render ── */
   return (
@@ -235,31 +234,27 @@ export default function AnalyzePage() {
       <div className="flex gap-2 mb-8 bg-[#111] border border-white/10 rounded-xl p-1.5 w-fit">
         <button
           onClick={() => switchMode("video")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-            mode === "video"
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === "video"
               ? "bg-green-500 text-black shadow-lg shadow-green-500/20"
               : "text-gray-400 hover:text-white hover:bg-white/5"
-          }`}
+            }`}
         >
           <Video className="w-4 h-4" />
           Video
         </button>
         <button
           onClick={() => switchMode("audio")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-            mode === "audio"
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === "audio"
               ? "bg-green-500 text-black shadow-lg shadow-green-500/20"
               : "text-gray-400 hover:text-white hover:bg-white/5"
-          }`}
+            }`}
         >
           <Mic className="w-4 h-4" />
           Audio
         </button>
       </div>
-
-      <AnimatePresence mode="wait">
-        {/* ═══════════════ AUDIO RESULT ═══════════════ */}
-        {audioResult ? (
+        <>
+          {audioResult ? (
           <motion.div key="audio-result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
             {/* Verdict */}
             <div className={`relative overflow-hidden rounded-3xl border p-8 mb-6 ${isFake ? "bg-red-500/5 border-red-500/30" : "bg-green-500/5 border-green-500/30"}`}>
@@ -729,19 +724,18 @@ export default function AnalyzePage() {
               </div>
             )}
 
-            {/* AI Debate Panel — also for audio */}
-            <DebatePanel analysisData={{
-              verdict: audioResult.verdict,
-              confidence: audioResult.confidence,
-              truth_score: Math.round(audioResult.real_prob * 100),
-              scores: [
-                { label: "FAKE", score: audioResult.fake_prob },
-                { label: "REAL", score: audioResult.real_prob },
-              ],
-              filename: file?.name || "audio_file",
-            }} />
+            {/* Forensic Report & Certificate */}
+            <ForensicReport
+              analysisData={{
+                verdict: audioResult.label === "fake" ? "FAKE" : "REAL",
+                confidence: audioResult.confidence,
+                truth_score: Math.round(audioResult.real_prob * 100),
+                filename: file?.name ?? "audio",
+              }}
+              audioData={audioResult}
+            />
 
-            <div className="flex gap-4 mt-6">
+            <div className="flex gap-4">
               <button onClick={resetAnalysis} className="flex-1 bg-[#111] border border-white/10 text-white py-4 rounded-2xl font-medium hover:bg-[#1a1a1a] transition-colors">
                 Analyze Another File
               </button>
@@ -798,13 +792,19 @@ export default function AnalyzePage() {
               </div>
             </div>
 
-            {/* Heatmap Timeline — auto-triggered with the same video file */}
-            <div className="mb-6">
-              <HeatmapTimeline videoFile={file} />
-            </div>
+            {file && (
+              <HeatmapTimeline initialFile={file} autoAnalyze compact onResult={setHeatmapResult} />
+            )}
 
-            {/* AI Debate Panel — auto-triggered */}
-            <DebatePanel analysisData={videoResult} />
+            {heatmapResult ? (
+              <ForensicReport analysisData={videoResult} heatmapData={heatmapResult} />
+            ) : (
+              <div className="bg-[#111] border border-white/10 rounded-3xl p-6 mt-6">
+                <p className="text-sm text-gray-400">
+                  Preparing heatmap evidence for the saved report. The report will appear once frame-level analysis finishes.
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-4 mt-6">
               <button onClick={resetAnalysis} className="flex-1 bg-[#111] border border-white/10 text-white py-4 rounded-2xl font-medium hover:bg-[#1a1a1a] transition-colors">
@@ -905,7 +905,7 @@ export default function AnalyzePage() {
             )}
           </motion.div>
         )}
-      </AnimatePresence>
+      </>
     </div>
   );
 }

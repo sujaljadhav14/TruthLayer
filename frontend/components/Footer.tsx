@@ -25,7 +25,7 @@ export default function Footer() {
             <ul className="space-y-3 text-sm text-gray-400">
               <li><a href="/dashboard" className="hover:text-white transition-colors">Dashboard</a></li>
               <li><a href="/dashboard/analyze" className="hover:text-white transition-colors">New Analysis</a></li>
-              <li><a href="/dashboard/results" className="hover:text-white transition-colors">Reports History</a></li>
+              <li><a href="/dashboard/history" className="hover:text-white transition-colors">Reports History</a></li>
             </ul>
           </div>
 
