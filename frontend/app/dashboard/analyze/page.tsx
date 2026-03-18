@@ -231,13 +231,38 @@ export default function AnalyzePage() {
         </div>
       </div>
 
+      {/* Project Basics */}
+      <div className="bg-[#111] border border-white/10 rounded-2xl p-5 mb-8">
+        <div className="flex items-center gap-2 mb-3">
+          <ShieldCheck className="w-4 h-4 text-green-400" />
+          <h2 className="text-sm font-semibold text-white uppercase tracking-wider">Project Basics</h2>
+        </div>
+        <p className="text-sm text-gray-300 leading-relaxed mb-4">
+          This platform helps verify media authenticity using AI-powered forensic checks for both video and audio content.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+            <p className="text-white font-medium mb-1">1. Upload Evidence</p>
+            <p className="text-gray-400">Add a video or audio file for analysis.</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+            <p className="text-white font-medium mb-1">2. Detect Manipulation</p>
+            <p className="text-gray-400">The system scores authenticity and flags suspicious signals.</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+            <p className="text-white font-medium mb-1">3. Review Results</p>
+            <p className="text-gray-400">Use the verdict, confidence, and timeline to make decisions.</p>
+          </div>
+        </div>
+      </div>
+
       {/* ── Mode Toggle ── */}
       <div className="flex gap-2 mb-8 bg-[#111] border border-white/10 rounded-xl p-1.5 w-fit">
         <button
           onClick={() => switchMode("video")}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === "video"
-              ? "bg-green-500 text-black shadow-lg shadow-green-500/20"
-              : "text-gray-400 hover:text-white hover:bg-white/5"
+            ? "bg-green-500 text-black shadow-lg shadow-green-500/20"
+            : "text-gray-400 hover:text-white hover:bg-white/5"
             }`}
         >
           <Video className="w-4 h-4" />
@@ -246,16 +271,16 @@ export default function AnalyzePage() {
         <button
           onClick={() => switchMode("audio")}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === "audio"
-              ? "bg-green-500 text-black shadow-lg shadow-green-500/20"
-              : "text-gray-400 hover:text-white hover:bg-white/5"
+            ? "bg-green-500 text-black shadow-lg shadow-green-500/20"
+            : "text-gray-400 hover:text-white hover:bg-white/5"
             }`}
         >
           <Mic className="w-4 h-4" />
           Audio
         </button>
       </div>
-        <>
-          {audioResult ? (
+      <>
+        {audioResult ? (
           <motion.div key="audio-result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
             {/* Verdict */}
             <div className={`relative overflow-hidden rounded-3xl border p-8 mb-6 ${isFake ? "bg-red-500/5 border-red-500/30" : "bg-green-500/5 border-green-500/30"}`}>
@@ -277,19 +302,7 @@ export default function AnalyzePage() {
                   )}
                   {audioResult.warning && <p className="text-amber-500/80 text-xs mt-2">{audioResult.warning}</p>}
                 </div>
-                <div className="text-center">
-                  <div className="relative w-28 h-28">
-                    <svg className="w-28 h-28 -rotate-90" viewBox="0 0 120 120">
-                      <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="8" className="text-white/5" />
-                      <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray={`${(audioResult.real_prob * 100) * 3.14} 314`} strokeLinecap="round"
-                        className={audioResult.real_prob >= 0.7 ? "text-green-500" : audioResult.real_prob >= 0.4 ? "text-amber-500" : "text-red-500"} />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-bold text-white">{Math.round(audioResult.real_prob * 100)}</span>
-                      <span className="text-[10px] text-gray-400 uppercase tracking-wider">Auth</span>
-                    </div>
-                  </div>
-                </div>
+
               </div>
             </div>
 
@@ -554,11 +567,10 @@ export default function AnalyzePage() {
                       return (
                         <div
                           key={i}
-                          className={`relative group h-full border-r border-black/20 last:border-r-0 transition-all hover:opacity-100 ${
-                            seg.label === "fake"
+                          className={`relative group h-full border-r border-black/20 last:border-r-0 transition-all hover:opacity-100 ${seg.label === "fake"
                               ? "bg-red-500"
                               : "bg-green-500"
-                          }`}
+                            }`}
                           style={{ width: `${widthPct}%`, minWidth: "2px", opacity: confOpacity }}
                         >
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black/95 border border-white/10 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
@@ -763,19 +775,7 @@ export default function AnalyzePage() {
                   </div>
                   <p className="text-gray-400 text-sm">File: {videoResult.filename}</p>
                 </div>
-                <div className="text-center">
-                  <div className="relative w-28 h-28">
-                    <svg className="w-28 h-28 -rotate-90" viewBox="0 0 120 120">
-                      <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="8" className="text-white/5" />
-                      <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray={`${videoResult.truth_score * 3.14} 314`} strokeLinecap="round"
-                        className={videoResult.truth_score >= 70 ? "text-green-500" : videoResult.truth_score >= 40 ? "text-amber-500" : "text-red-500"} />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-bold text-white">{videoResult.truth_score}</span>
-                      <span className="text-[10px] text-gray-400 uppercase tracking-wider">Truth</span>
-                    </div>
-                  </div>
-                </div>
+
               </div>
             </div>
 
@@ -809,8 +809,7 @@ export default function AnalyzePage() {
               </div>
             )}
 
-            {/* AI Debate Panel */}
-            <DebatePanel analysisData={videoResult} />
+            {/* AI Debate Panel removed for video */}
 
             <div className="flex gap-4 mt-6">
               <button onClick={resetAnalysis} className="flex-1 bg-[#111] border border-white/10 text-white py-4 rounded-2xl font-medium hover:bg-[#1a1a1a] transition-colors">

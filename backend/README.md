@@ -38,9 +38,10 @@ The current certificate flow uses:
 cd backend
 python -m venv venv
 .\venv\Scripts\activate.bat
+python main.py
 pip install -r requirements.txt
 copy .env.example .env
-python main.py
+.\venv\Scripts\activate.bat
 ```
 
 ## Required Environment
