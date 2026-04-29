@@ -13,7 +13,8 @@ backend/model_cache/
 *.safetensors
 
 # Environment secrets
-backend/.env
+# Note: `backend/.env` is intentionally allowed to be committed per user request.
+# If you want to keep env files private, revert this change.
 frontend/.env.local
 
 # Temp / uploads
