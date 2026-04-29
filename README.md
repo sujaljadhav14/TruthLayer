@@ -1,3 +1,20 @@
+# Video+Audio Manipulation Analyzer — Docs & Progress
+
+Purpose:
+- Single-developer, AI-assisted platform for detecting manipulated media with explainability and a human-in-the-loop.
+
+Docs added:
+- docs/system_architecture.md
+- docs/ai_architecture.md
+- docs/skills.md
+- docs/subagents.md
+- PROGRESS.md
+
+Next steps:
+- Create hard-case validation set, implement 3-state API, finish audio pipeline, scaffold review UI.
+
+Branching & contributions:
+- Branch naming: feature/*, fix/*, hotfix/*
 # TruthLens
 
 A forensic-grade deepfake detection platform that catches manipulated video and audio — and tells you exactly which tool made it.
