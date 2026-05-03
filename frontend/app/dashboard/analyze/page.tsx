@@ -71,7 +71,15 @@ type AudioResult = {
       noise_analysis: number;
     };
   };
-  vad: { segments: number; speech_ratio: number };
+  vad: {
+    segments: number;
+    speech_ratio: number;
+    silence_ratio: number;
+    speech_seconds: number;
+    longest_speech_seconds: number;
+    speech_segments_count: number;
+    speech_segments: { start_sec: number; end_sec: number; duration_sec: number }[];
+  };
   mfcc: { regularity_score: number };
   speaker_verification: { similarity: number; score: number };
   breathing: { count: number; score: number; intervals: number[] };
@@ -430,6 +438,44 @@ export default function AnalyzePage() {
                   </div>
                 ))}
               </div>
+
+              {audioResult.vad.speech_segments?.length > 0 && (
+                <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                      <p className="text-sm font-bold text-white">Speech Regions</p>
+                      <p className="text-xs text-gray-500">
+                        {audioResult.vad.speech_segments_count} regions, {pct(audioResult.vad.speech_ratio)} speech, {pct(audioResult.vad.silence_ratio)} silence
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Longest region: {audioResult.vad.longest_speech_seconds.toFixed(1)}s
+                    </p>
+                  </div>
+                  <div className="flex h-4 rounded-full overflow-hidden bg-white/5 gap-px">
+                    {audioResult.vad.speech_segments.map((seg, idx) => {
+                      const total = Math.max(audioResult.duration, seg.end_sec);
+                      const width = Math.max(2, ((seg.duration_sec / total) * 100));
+                      return (
+                        <div
+                          key={`${seg.start_sec}-${idx}`}
+                          className="bg-blue-500/80"
+                          style={{ width: `${width}%` }}
+                          title={`${fmtTime(seg.start_sec)} - ${fmtTime(seg.end_sec)} (${seg.duration_sec.toFixed(1)}s)`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-400">
+                    {audioResult.vad.speech_segments.map((seg, idx) => (
+                      <div key={`${seg.start_sec}-${idx}`} className="rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2 flex items-center justify-between gap-3">
+                        <span>{fmtTime(seg.start_sec)} - {fmtTime(seg.end_sec)}</span>
+                        <span className="text-gray-500">{seg.duration_sec.toFixed(1)}s</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* ML Models + Signal Votes */}

@@ -93,11 +93,18 @@ FREQ_WEIGHTS = {
 }
 
 # Override: HF energy + CPP both strong -> force FAKE
-HF_OVERRIDE_THRESHOLD  = 0.70
-CPP_OVERRIDE_THRESHOLD = 0.55
-OVERRIDE_FAKE_SCORE    = 0.80
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, default))
+    except (TypeError, ValueError):
+        return default
 
-CONFIDENCE_THRESHOLD = 0.52
+
+HF_OVERRIDE_THRESHOLD  = _env_float("TRUTHLENS_HF_OVERRIDE_THRESHOLD", 0.70)
+CPP_OVERRIDE_THRESHOLD = _env_float("TRUTHLENS_CPP_OVERRIDE_THRESHOLD", 0.55)
+OVERRIDE_FAKE_SCORE    = _env_float("TRUTHLENS_OVERRIDE_FAKE_SCORE", 0.80)
+
+CONFIDENCE_THRESHOLD = _env_float("TRUTHLENS_CONFIDENCE_THRESHOLD", 0.52)
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -265,6 +272,41 @@ def extract_speech_segments(audio: np.ndarray, sr: int) -> dict:
         "speech_audio": speech_audio,
         "non_speech_audio": non_speech_audio,
         "speech_ratio": len(speech_audio) / (len(audio) + 1),
+    }
+
+
+def summarize_speech_segments(segments: list, audio_len: int, sr: int, preview_limit: int = 10) -> dict:
+    """Summarize speech activity into a compact structure for UI display.
+
+    This gives the frontend enough information to show where the person is
+    speaking in a long clip without needing a separate dataset or retraining.
+    """
+    duration_sec = audio_len / sr if sr else 0.0
+    total_speech_sec = 0.0
+    longest_segment_sec = 0.0
+    speech_regions = []
+
+    for start, end in segments:
+        start_sec = round(start / sr, 3) if sr else 0.0
+        end_sec = round(end / sr, 3) if sr else 0.0
+        seg_sec = max(0.0, end_sec - start_sec)
+        total_speech_sec += seg_sec
+        longest_segment_sec = max(longest_segment_sec, seg_sec)
+        speech_regions.append({
+            "start_sec": start_sec,
+            "end_sec": end_sec,
+            "duration_sec": round(seg_sec, 3),
+        })
+
+    speech_ratio = total_speech_sec / duration_sec if duration_sec > 0 else 0.0
+    return {
+        "speech_segments": speech_regions[:preview_limit],
+        "speech_segments_count": len(speech_regions),
+        "speech_ratio": round(speech_ratio, 4),
+        "silence_ratio": round(max(0.0, 1.0 - speech_ratio), 4),
+        "speech_seconds": round(total_speech_sec, 3),
+        "longest_speech_seconds": round(longest_segment_sec, 3),
+        "audio_seconds": round(duration_sec, 3),
     }
 
 
@@ -1164,6 +1206,7 @@ class DeepfakeDetector:
         print(f"\n  [STEP 2] Voice Activity Detection...")
         vad_result = extract_speech_segments(audio_hq, TARGET_SR)
         speech_segments = vad_result["segments"]
+        speech_summary = summarize_speech_segments(speech_segments, len(audio_hq), TARGET_SR)
 
         # ── STEP 3: MFCC Feature Extraction ──
         print(f"\n  [STEP 3] MFCC Feature Extraction...")
@@ -1174,24 +1217,119 @@ class DeepfakeDetector:
         print(f"\n  [STEP 4] Speaker Verification (Resemblyzer)...")
         spkr_result = speaker_verification(speech_audio, TARGET_SR)
 
-        # ── STEP 5: ML Deepfake Detection ──
-        print(f"\n  [STEP 5] ML Deepfake Detection...")
-        print("  [ML-A] XLS-R model...")
-        ml_a = score_ml(audio_ml, self.fe_a, self.model_a, ML_TEMP_A)
-        print(f"    fake={ml_a['fake_prob']*100:.1f}%  "
-              f"[{ml_a['fake_chunks']}/{ml_a['total_chunks']} chunks]")
+        # ── STEP 5: ML Deepfake Detection (chunked + aggregated) ──
+        print(f"\n  [STEP 5] ML Deepfake Detection (chunked + aggregated)...")
 
-        ml_b = None
-        if self._has_b:
-            print("  [ML-B] Wav2Vec2 model...")
-            ml_b = score_ml(audio_ml, self.fe_b, self.model_b, ML_TEMP_B)
-            print(f"    fake={ml_b['fake_prob']*100:.1f}%  "
-                  f"[{ml_b['fake_chunks']}/{ml_b['total_chunks']} chunks]")
+        # If VAD found no segments, fall back to full-file scoring
+        if not speech_segments:
+            print("  [ML] No speech segments found - scoring full file")
+            print("  [ML-A] XLS-R model...")
+            ml_a = score_ml(audio_ml, self.fe_a, self.model_a, ML_TEMP_A)
+            print(f"    fake={ml_a['fake_prob']*100:.1f}%  "
+                  f"[{ml_a['fake_chunks']}/{ml_a['total_chunks']} chunks]")
 
-        # Deepfake model score: combine ML models
-        deepfake_ml = ml_a["fake_prob"]
-        if ml_b:
-            deepfake_ml = 0.7 * ml_a["fake_prob"] + 0.3 * ml_b["fake_prob"]
+            ml_b = None
+            if self._has_b:
+                print("  [ML-B] Wav2Vec2 model...")
+                ml_b = score_ml(audio_ml, self.fe_b, self.model_b, ML_TEMP_B)
+                print(f"    fake={ml_b['fake_prob']*100:.1f}%  "
+                      f"[{ml_b['fake_chunks']}/{ml_b['total_chunks']} chunks]")
+
+            deepfake_ml = ml_a['fake_prob']
+            if ml_b:
+                deepfake_ml = 0.7 * ml_a['fake_prob'] + 0.3 * ml_b['fake_prob']
+            timeline = ml_a.get('chunk_details', [])
+            combined_signals = run_signals(audio_hq)
+        else:
+            # Process only the top-N longest speech segments to save time
+            MAX_SEGMENTS = 8
+            segs = sorted(speech_segments, key=lambda s: s[1]-s[0], reverse=True)
+            segs = segs[:MAX_SEGMENTS]
+
+            total_dur = sum((e - s) for s, e in segs) / TARGET_SR
+            if total_dur <= 0:
+                # Fallback to full-file scoring
+                print("  [ML] Segment durations invalid - scoring full file")
+                ml_a = score_ml(audio_ml, self.fe_a, self.model_a, ML_TEMP_A)
+                ml_b = None
+                if self._has_b:
+                    ml_b = score_ml(audio_ml, self.fe_b, self.model_b, ML_TEMP_B)
+                deepfake_ml = ml_a['fake_prob']
+                if ml_b:
+                    deepfake_ml = 0.7 * ml_a['fake_prob'] + 0.3 * ml_b['fake_prob']
+                timeline = ml_a.get('chunk_details', [])
+                combined_signals = run_signals(audio_hq)
+            else:
+                seg_results = []
+                timeline = []
+                weighted_ml = 0.0
+                weighted_signals = {k: 0.0 for k in SIGNAL_FNS.keys()}
+
+                for s_idx, (s, e) in enumerate(segs):
+                    seg_hq = audio_hq[s:e]
+                    seg_dur = (e - s) / TARGET_SR
+                    print(f"  [ML] Segment {s_idx+1}/{len(segs)}: {seg_dur:.2f}s")
+
+                    # Compute lightweight signals first (HF + flatness)
+                    try:
+                        seg_signals = run_signals(seg_hq)
+                    except Exception as ex:
+                        print(f"    [!] run_signals failed for segment: {ex}")
+                        seg_signals = {k: 0.5 for k in SIGNAL_FNS.keys()}
+
+                    # Decide whether to run heavy ML based on heuristics
+                    run_heavy = False
+                    if seg_dur >= 2.0:
+                        # If HF energy or flatness suggest suspicious, run ML
+                        if seg_signals.get('hf_energy', 0) > 0.06 or seg_signals.get('spectral_flatness', 0) > 0.05:
+                            run_heavy = True
+                        else:
+                            # if speech is long, still run ML on a sample
+                            if seg_dur >= 5.0:
+                                run_heavy = True
+
+                    ml_res_a = {'fake_prob': 0.5, 'chunk_details': []}
+                    ml_res_b = None
+                    if run_heavy:
+                        # Resample segment to ML_SR and run models
+                        try:
+                            seg_ml = librosa.resample(seg_hq, orig_sr=TARGET_SR, target_sr=ML_SR)
+                            seg_ml = normalize(seg_ml)
+                            ml_res_a = score_ml(seg_ml, self.fe_a, self.model_a, ML_TEMP_A)
+                            print(f"    [ML-A] seg fake={ml_res_a['fake_prob']*100:.1f}%")
+                            if self._has_b:
+                                ml_res_b = score_ml(seg_ml, self.fe_b, self.model_b, ML_TEMP_B)
+                                print(f"    [ML-B] seg fake={ml_res_b['fake_prob']*100:.1f}%")
+                        except Exception as ex:
+                            print(f"    [!] ML inference failed for segment: {ex}")
+                            ml_res_a = {'fake_prob': 0.5, 'chunk_details': []}
+
+                    # Aggregate weighted ML score and signals
+                    weight = seg_dur / total_dur
+                    weighted_ml += weight * ml_res_a.get('fake_prob', 0.5)
+                    for k, v in seg_signals.items():
+                        weighted_signals[k] += weight * v
+
+                    # Merge timeline chunk details, offsetting times
+                    for cd in ml_res_a.get('chunk_details', []):
+                        offset_start = round(cd['start'] + (s / TARGET_SR), 3)
+                        offset_end = round(cd['end'] + (s / TARGET_SR), 3)
+                        cd_off = dict(cd)
+                        cd_off['start'] = offset_start
+                        cd_off['end'] = offset_end
+                        timeline.append(cd_off)
+
+                    seg_results.append({
+                        'dur': seg_dur,
+                        'signals': seg_signals,
+                        'ml_a': ml_res_a,
+                        'ml_b': ml_res_b,
+                    })
+
+                deepfake_ml = float(np.clip(weighted_ml, 0.0, 1.0))
+                combined_signals = {k: float(np.clip(v, 0.0, 1.0)) for k, v in weighted_signals.items()}
+                ml_a = {'fake_prob': deepfake_ml, 'chunk_details': timeline, 'fake_chunks': 0, 'total_chunks': len(timeline)}
+                ml_b = None
 
         # ── STEP 6: Artifact Analysis (8 frequency signals) ──
         print(f"\n  [STEP 6] Artifact Analysis...")
@@ -1275,6 +1413,11 @@ class DeepfakeDetector:
             "vad": {
                 "segments": len(speech_segments),
                 "speech_ratio": round(vad_result["speech_ratio"], 4),
+                "silence_ratio": speech_summary["silence_ratio"],
+                "speech_seconds": speech_summary["speech_seconds"],
+                "longest_speech_seconds": speech_summary["longest_speech_seconds"],
+                "speech_segments": speech_summary["speech_segments"],
+                "speech_segments_count": speech_summary["speech_segments_count"],
             },
             "mfcc": {
                 "regularity_score": mfcc_features.get("mfcc_regularity_score", 0),

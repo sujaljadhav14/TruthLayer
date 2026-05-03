@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master", "feature/**", "chore/**"]
+  pull_request:
+
+jobs:
+  backend-tests:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+
+      - name: Run backend unit tests
+        run: pytest tests -q
+
+      - name: Smoke test /health
+        shell: pwsh
+        run: |
+          $proc = Start-Process -FilePath python -ArgumentList 'main.py' -WorkingDirectory (Get-Location) -PassThru -WindowStyle Hidden
+          try {
+            $deadline = (Get-Date).AddSeconds(90)
+            $ok = $false
+            while ((Get-Date) -lt $deadline) {
+              try {
+                $response = Invoke-RestMethod -Uri http://127.0.0.1:8001/health -Method Get -TimeoutSec 5
+                if ($response.status -eq 'ok') {
+                  $ok = $true
+                  break
+                }
+              } catch {
+              }
+              Start-Sleep -Seconds 2
+            }
+            if (-not $ok) { throw 'Health check failed' }
+          } finally {
+            if ($proc -and -not $proc.HasExited) {
+              Stop-Process -Id $proc.Id -Force
+            }
+          }
