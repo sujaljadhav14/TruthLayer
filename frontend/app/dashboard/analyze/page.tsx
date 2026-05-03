@@ -84,6 +84,7 @@ type AudioResult = {
   speaker_verification: { similarity: number; score: number };
   breathing: { count: number; score: number; intervals: number[] };
   warning: string;
+  analysis_mode?: string;
   timeline: { start: number; end: number; fake_prob: number; real_prob: number; label: string }[];
   duration: number;
 };
@@ -437,6 +438,10 @@ export default function AnalyzePage() {
                     <p className="text-[10px] text-gray-600 mt-0.5">{s.sub}</p>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-gray-400">
+                <span>Analysis mode</span>
+                <span className="font-mono text-gray-200">{audioResult.analysis_mode ?? "full_audio"}</span>
               </div>
 
               {audioResult.vad.speech_segments?.length > 0 && (

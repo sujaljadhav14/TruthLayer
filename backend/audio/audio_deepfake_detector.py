@@ -1217,6 +1217,12 @@ class DeepfakeDetector:
         print(f"\n  [STEP 4] Speaker Verification (Resemblyzer)...")
         spkr_result = speaker_verification(speech_audio, TARGET_SR)
 
+        # Use the speech-focused slice for frequency analysis when speech exists.
+        # This reduces the impact of long music/silence-heavy files while keeping
+        # the full audio available for fallback and time-based summaries.
+        analysis_audio = speech_audio if len(speech_segments) > 0 else audio_hq
+        analysis_mode = "speech_focused" if len(speech_segments) > 0 else "full_audio"
+
         # ── STEP 5: ML Deepfake Detection (chunked + aggregated) ──
         print(f"\n  [STEP 5] ML Deepfake Detection (chunked + aggregated)...")
 
@@ -1333,7 +1339,7 @@ class DeepfakeDetector:
 
         # ── STEP 6: Artifact Analysis (8 frequency signals) ──
         print(f"\n  [STEP 6] Artifact Analysis...")
-        signals  = run_signals(audio_hq)
+        signals  = run_signals(analysis_audio)
         fs, override = freq_combined(signals)
         print(f"\n  [FREQ] Combined: {fs*100:.1f}%"
               f"{'  <- OVERRIDE ACTIVE' if override else ''}")
@@ -1374,7 +1380,7 @@ class DeepfakeDetector:
 
         # ── Tool Classification ──
         print("\n  [TOOL] Classifying source tool...")
-        tool = classify_tool(audio_hq, signals, scores["fake"])
+        tool = classify_tool(analysis_audio, signals, scores["fake"])
         print(f"    Most likely: {tool['top_tool']} "
               f"({tool['confidence']*100:.1f}%)")
 
@@ -1408,6 +1414,7 @@ class DeepfakeDetector:
             "signals":        {k: {"value": round(v, 4), "score": round(v, 4), "vote": "fake" if v > 0.55 else "real" if v < 0.45 else "uncertain"} for k, v in signals.items()},
             "freq_votes":     {"fake": fv, "real": rv, "uncertain": 8 - fv - rv},
             "warning":        warning,
+            "analysis_mode":  analysis_mode,
             # New pipeline data
             "authenticity_score": scores,
             "vad": {
