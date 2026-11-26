@@ -275,7 +275,54 @@ def extract_speech_segments(audio: np.ndarray, sr: int) -> dict:
     }
 
 
-def summarize_speech_segments(segments: list, audio_len: int, sr: int, preview_limit: int = 10) -> dict:
+def build_speech_track(audio: np.ndarray, segments: list, seg_sr: int, audio_sr: int) -> tuple:
+    """Concatenate the speech segments of `audio` into one track for ML scoring.
+
+    `segments` are (start, end) sample indices at `seg_sr`; `audio` is at
+    `audio_sr`. Returns (speech_track, spans) where each span is
+    (track_start_sec, original_start_sec, duration_sec) so chunk times on the
+    track can be mapped back onto the original file.
+    """
+    ratio = audio_sr / seg_sr
+    parts, spans, cursor = [], [], 0.0
+    for start, end in segments:
+        s = int(start * ratio)
+        e = min(int(end * ratio), len(audio))
+        if e <= s:
+            continue
+        parts.append(audio[s:e])
+        dur = (e - s) / audio_sr
+        spans.append((cursor, s / audio_sr, dur))
+        cursor += dur
+    if not parts:
+        return np.array([], dtype=np.float32), []
+    return np.concatenate(parts).astype(np.float32), spans
+
+
+def speech_time_to_original(t: float, spans: list) -> float:
+    """Map a time on the concatenated speech track back to the original file."""
+    if not spans:
+        return t
+    for track_start, orig_start, dur in spans:
+        if t <= track_start + dur:
+            return orig_start + max(0.0, t - track_start)
+    # Past the end (e.g. a zero-padded final chunk): clamp to the last speech end
+    _, orig_start, dur = spans[-1]
+    return orig_start + dur
+
+
+def remap_chunk_times(chunks: list, spans: list) -> list:
+    """Return chunk_details with start/end moved onto the original timeline."""
+    out = []
+    for cd in chunks:
+        mapped = dict(cd)
+        mapped["start"] = round(speech_time_to_original(cd["start"], spans), 2)
+        mapped["end"] = round(speech_time_to_original(cd["end"], spans), 2)
+        out.append(mapped)
+    return out
+
+
+def summarize_speech_segments(segments: list, audio_len: int, sr: int, preview_limit: int = 50) -> dict:
     """Summarize speech activity into a compact structure for UI display.
 
     This gives the frontend enough information to show where the person is
@@ -1217,129 +1264,47 @@ class DeepfakeDetector:
         print(f"\n  [STEP 4] Speaker Verification (Resemblyzer)...")
         spkr_result = speaker_verification(speech_audio, TARGET_SR)
 
-        # Use the speech-focused slice for frequency analysis when speech exists.
-        # This reduces the impact of long music/silence-heavy files while keeping
-        # the full audio available for fallback and time-based summaries.
-        analysis_audio = speech_audio if len(speech_segments) > 0 else audio_hq
-        analysis_mode = "speech_focused" if len(speech_segments) > 0 else "full_audio"
-
-        # ── STEP 5: ML Deepfake Detection (chunked + aggregated) ──
-        print(f"\n  [STEP 5] ML Deepfake Detection (chunked + aggregated)...")
-
-        # If VAD found no segments, fall back to full-file scoring
-        if not speech_segments:
-            print("  [ML] No speech segments found - scoring full file")
-            print("  [ML-A] XLS-R model...")
-            ml_a = score_ml(audio_ml, self.fe_a, self.model_a, ML_TEMP_A)
-            print(f"    fake={ml_a['fake_prob']*100:.1f}%  "
-                  f"[{ml_a['fake_chunks']}/{ml_a['total_chunks']} chunks]")
-
-            ml_b = None
-            if self._has_b:
-                print("  [ML-B] Wav2Vec2 model...")
-                ml_b = score_ml(audio_ml, self.fe_b, self.model_b, ML_TEMP_B)
-                print(f"    fake={ml_b['fake_prob']*100:.1f}%  "
-                      f"[{ml_b['fake_chunks']}/{ml_b['total_chunks']} chunks]")
-
-            deepfake_ml = ml_a['fake_prob']
-            if ml_b:
-                deepfake_ml = 0.7 * ml_a['fake_prob'] + 0.3 * ml_b['fake_prob']
-            timeline = ml_a.get('chunk_details', [])
-            combined_signals = run_signals(audio_hq)
+        # ── STEP 5: ML Deepfake Detection ──
+        # The ML models only see detected speech, so long silences or music
+        # don't dilute their score. Speech segments are joined into one track,
+        # scored in overlapping 4 s chunks (short phrases get combined), and
+        # chunk times are mapped back onto the original file for the timeline.
+        # Frequency signals (step 6) still use the full file: noise_floor
+        # needs the silent parts and the thresholds were calibrated that way.
+        speech_track, spans = build_speech_track(
+            audio_ml, speech_segments, TARGET_SR, ML_SR)
+        if len(speech_track) >= ML_SR:  # at least 1 s of speech
+            ml_input, analysis_mode = speech_track, "speech_focused"
         else:
-            # Process only the top-N longest speech segments to save time
-            MAX_SEGMENTS = 8
-            segs = sorted(speech_segments, key=lambda s: s[1]-s[0], reverse=True)
-            segs = segs[:MAX_SEGMENTS]
+            ml_input, spans, analysis_mode = audio_ml, [], "full_audio"
+        print(f"\n  [STEP 5] ML Deepfake Detection ({analysis_mode}, "
+              f"{len(ml_input)/ML_SR:.1f}s)...")
 
-            total_dur = sum((e - s) for s, e in segs) / TARGET_SR
-            if total_dur <= 0:
-                # Fallback to full-file scoring
-                print("  [ML] Segment durations invalid - scoring full file")
-                ml_a = score_ml(audio_ml, self.fe_a, self.model_a, ML_TEMP_A)
-                ml_b = None
-                if self._has_b:
-                    ml_b = score_ml(audio_ml, self.fe_b, self.model_b, ML_TEMP_B)
-                deepfake_ml = ml_a['fake_prob']
-                if ml_b:
-                    deepfake_ml = 0.7 * ml_a['fake_prob'] + 0.3 * ml_b['fake_prob']
-                timeline = ml_a.get('chunk_details', [])
-                combined_signals = run_signals(audio_hq)
-            else:
-                seg_results = []
-                timeline = []
-                weighted_ml = 0.0
-                weighted_signals = {k: 0.0 for k in SIGNAL_FNS.keys()}
+        print("  [ML-A] XLS-R model...")
+        ml_a = score_ml(ml_input, self.fe_a, self.model_a, ML_TEMP_A)
+        print(f"    fake={ml_a['fake_prob']*100:.1f}%  "
+              f"[{ml_a['fake_chunks']}/{ml_a['total_chunks']} chunks]")
 
-                for s_idx, (s, e) in enumerate(segs):
-                    seg_hq = audio_hq[s:e]
-                    seg_dur = (e - s) / TARGET_SR
-                    print(f"  [ML] Segment {s_idx+1}/{len(segs)}: {seg_dur:.2f}s")
+        ml_b = None
+        if self._has_b:
+            print("  [ML-B] Wav2Vec2 model...")
+            ml_b = score_ml(ml_input, self.fe_b, self.model_b, ML_TEMP_B)
+            print(f"    fake={ml_b['fake_prob']*100:.1f}%  "
+                  f"[{ml_b['fake_chunks']}/{ml_b['total_chunks']} chunks]")
 
-                    # Compute lightweight signals first (HF + flatness)
-                    try:
-                        seg_signals = run_signals(seg_hq)
-                    except Exception as ex:
-                        print(f"    [!] run_signals failed for segment: {ex}")
-                        seg_signals = {k: 0.5 for k in SIGNAL_FNS.keys()}
+        if spans:
+            ml_a["chunk_details"] = remap_chunk_times(ml_a["chunk_details"], spans)
+            if ml_b:
+                ml_b["chunk_details"] = remap_chunk_times(ml_b["chunk_details"], spans)
 
-                    # Decide whether to run heavy ML based on heuristics
-                    run_heavy = False
-                    if seg_dur >= 2.0:
-                        # If HF energy or flatness suggest suspicious, run ML
-                        if seg_signals.get('hf_energy', 0) > 0.06 or seg_signals.get('spectral_flatness', 0) > 0.05:
-                            run_heavy = True
-                        else:
-                            # if speech is long, still run ML on a sample
-                            if seg_dur >= 5.0:
-                                run_heavy = True
-
-                    ml_res_a = {'fake_prob': 0.5, 'chunk_details': []}
-                    ml_res_b = None
-                    if run_heavy:
-                        # Resample segment to ML_SR and run models
-                        try:
-                            seg_ml = librosa.resample(seg_hq, orig_sr=TARGET_SR, target_sr=ML_SR)
-                            seg_ml = normalize(seg_ml)
-                            ml_res_a = score_ml(seg_ml, self.fe_a, self.model_a, ML_TEMP_A)
-                            print(f"    [ML-A] seg fake={ml_res_a['fake_prob']*100:.1f}%")
-                            if self._has_b:
-                                ml_res_b = score_ml(seg_ml, self.fe_b, self.model_b, ML_TEMP_B)
-                                print(f"    [ML-B] seg fake={ml_res_b['fake_prob']*100:.1f}%")
-                        except Exception as ex:
-                            print(f"    [!] ML inference failed for segment: {ex}")
-                            ml_res_a = {'fake_prob': 0.5, 'chunk_details': []}
-
-                    # Aggregate weighted ML score and signals
-                    weight = seg_dur / total_dur
-                    weighted_ml += weight * ml_res_a.get('fake_prob', 0.5)
-                    for k, v in seg_signals.items():
-                        weighted_signals[k] += weight * v
-
-                    # Merge timeline chunk details, offsetting times
-                    for cd in ml_res_a.get('chunk_details', []):
-                        offset_start = round(cd['start'] + (s / TARGET_SR), 3)
-                        offset_end = round(cd['end'] + (s / TARGET_SR), 3)
-                        cd_off = dict(cd)
-                        cd_off['start'] = offset_start
-                        cd_off['end'] = offset_end
-                        timeline.append(cd_off)
-
-                    seg_results.append({
-                        'dur': seg_dur,
-                        'signals': seg_signals,
-                        'ml_a': ml_res_a,
-                        'ml_b': ml_res_b,
-                    })
-
-                deepfake_ml = float(np.clip(weighted_ml, 0.0, 1.0))
-                combined_signals = {k: float(np.clip(v, 0.0, 1.0)) for k, v in weighted_signals.items()}
-                ml_a = {'fake_prob': deepfake_ml, 'chunk_details': timeline, 'fake_chunks': 0, 'total_chunks': len(timeline)}
-                ml_b = None
+        # Deepfake model score: combine ML models
+        deepfake_ml = ml_a["fake_prob"]
+        if ml_b:
+            deepfake_ml = 0.7 * ml_a["fake_prob"] + 0.3 * ml_b["fake_prob"]
 
         # ── STEP 6: Artifact Analysis (8 frequency signals) ──
         print(f"\n  [STEP 6] Artifact Analysis...")
-        signals  = run_signals(analysis_audio)
+        signals  = run_signals(audio_hq)
         fs, override = freq_combined(signals)
         print(f"\n  [FREQ] Combined: {fs*100:.1f}%"
               f"{'  <- OVERRIDE ACTIVE' if override else ''}")
@@ -1380,7 +1345,7 @@ class DeepfakeDetector:
 
         # ── Tool Classification ──
         print("\n  [TOOL] Classifying source tool...")
-        tool = classify_tool(analysis_audio, signals, scores["fake"])
+        tool = classify_tool(audio_hq, signals, scores["fake"])
         print(f"    Most likely: {tool['top_tool']} "
               f"({tool['confidence']*100:.1f}%)")
 
