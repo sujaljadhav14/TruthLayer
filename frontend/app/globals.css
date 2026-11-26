@@ -111,402 +111,62 @@ div[class*="cl-internal"][style*="background: rgb(249"] {
   display: none !important;
 }
 
-/* ===== Auth page animated background ===== */
-@keyframes float {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-30px) scale(1.08); }
-}
-
-@keyframes grid-fade {
-  0%, 100% { opacity: 0.02; }
-  50% { opacity: 0.05; }
-}
-
-@keyframes card-enter {
-  0% {
-    opacity: 0;
-    transform: translateY(40px) scale(0.95);
-    filter: blur(8px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
-  }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-@keyframes border-glow {
-  0%, 100% { border-color: rgba(34, 197, 94, 0.15); box-shadow: 0 0 40px rgba(34, 197, 94, 0.03), 0 25px 60px rgba(0, 0, 0, 0.5); }
-  50% { border-color: rgba(34, 197, 94, 0.3); box-shadow: 0 0 60px rgba(34, 197, 94, 0.08), 0 25px 60px rgba(0, 0, 0, 0.5); }
-}
-
-@keyframes fade-in-up {
-  0% { opacity: 0; transform: translateY(20px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-.auth-bg {
-  position: relative;
-  overflow: hidden;
-}
-
-.auth-bg::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(34, 197, 94, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34, 197, 94, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  animation: grid-fade 6s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.auth-orb-1 {
-  position: absolute;
-  top: 5%;
-  left: 10%;
-  width: 500px;
-  height: 500px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(34, 197, 94, 0.15) 0%, transparent 70%);
-  animation: float 8s ease-in-out infinite;
-  filter: blur(60px);
-  pointer-events: none;
-}
-
-.auth-orb-2 {
-  position: absolute;
-  bottom: 5%;
-  right: 5%;
-  width: 450px;
-  height: 450px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(34, 197, 94, 0.1) 0%, transparent 70%);
-  animation: float 10s ease-in-out infinite 2s;
-  filter: blur(70px);
-  pointer-events: none;
-}
-
-.auth-orb-3 {
-  position: absolute;
-  top: 40%;
-  right: 25%;
-  width: 300px;
-  height: 300px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
-  animation: float 12s ease-in-out infinite 4s;
-  filter: blur(80px);
-  pointer-events: none;
-}
-
-/* ===== Glass card ===== */
-.glass-card {
-  background: rgba(10, 10, 10, 0.75);
-  backdrop-filter: blur(32px);
-  -webkit-backdrop-filter: blur(32px);
-  border: 1.5px solid rgba(34, 197, 94, 0.15);
-  box-shadow:
-    0 0 40px rgba(34, 197, 94, 0.03),
-    0 25px 60px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  animation: card-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards,
-             border-glow 4s ease-in-out infinite 0.8s;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Shimmer highlight on glass card top edge */
-.glass-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(34, 197, 94, 0.4) 30%,
-    rgba(255, 255, 255, 0.2) 50%,
-    rgba(34, 197, 94, 0.4) 70%,
-    transparent 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 4s ease-in-out infinite;
-}
-
-/* Feature card hover */
-.feature-card {
-  background: rgba(0, 255, 136, 0.03);
-  border: 1px solid rgba(0, 255, 136, 0.1);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.feature-card:hover {
-  background: rgba(0, 255, 136, 0.08);
-  border-color: rgba(0, 255, 136, 0.35);
-  transform: translateX(8px);
-  box-shadow: -4px 0 20px rgba(0, 255, 136, 0.15);
-}
-
-/* Staggered fade in for branding side */
-.fade-in-1 { animation: fade-in-up 0.6s ease-out 0.1s both; }
-.fade-in-2 { animation: fade-in-up 0.6s ease-out 0.25s both; }
-.fade-in-3 { animation: fade-in-up 0.6s ease-out 0.4s both; }
-.fade-in-4 { animation: fade-in-up 0.6s ease-out 0.55s both; }
-.fade-in-5 { animation: fade-in-up 0.6s ease-out 0.7s both; }
-
-/* ===== Clerk component overrides ===== */
+/* ===== Clerk sign-in / sign-up overrides (used by components/AuthShell.tsx) ===== */
 .cl-card {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
 }
+.cl-headerTitle { color: var(--color-paper) !important; }
+.cl-headerSubtitle { color: rgb(242 237 226 / 0.6) !important; }
+.cl-dividerLine { background: rgb(255 255 255 / 0.1) !important; }
+.cl-dividerText { color: rgb(242 237 226 / 0.45) !important; }
+.cl-formFieldLabel { color: rgb(242 237 226 / 0.75) !important; font-weight: 500 !important; }
+.cl-identityPreviewEditButton { color: var(--color-signal) !important; }
+.cl-footer { background: transparent !important; }
 
-.cl-headerTitle {
-  color: #ffffff !important;
-}
-
-.cl-headerSubtitle {
-  color: #9ca3af !important;
-}
-
-/* Clerk social/input/primary button styles are defined below in CHANGE 2-4 sections */
-
-.cl-dividerLine {
-  background: rgba(255, 255, 255, 0.08) !important;
-}
-
-.cl-dividerText {
-  color: #6b7280 !important;
-}
-
-.cl-formFieldLabel {
-  color: #d1d5db !important;
-  font-weight: 500 !important;
-}
-
-.cl-identityPreviewEditButton {
-  color: #22c55e !important;
-}
-
-.cl-footer {
-  background: transparent !important;
-}
-
-/* ===== CHANGE 3: Hover + transition effects on ALL buttons/links ===== */
-
-/* Global: smooth transition on every button and link */
-button,
-a[href] {
-  transition: all 0.3s ease;
-}
-
-/* Green primary buttons — lift + green glow on hover */
-.btn-green {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  transform: translateY(0);
-  box-shadow: 0 0 0 rgba(34, 197, 94, 0);
-}
-
-.btn-green:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
-  background-color: #16a34a;
-}
-
-/* Outline / secondary buttons — lift + subtle white glow on hover */
-.btn-outline {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  transform: translateY(0);
-}
-
-.btn-outline:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(255, 255, 255, 0.15);
-  background-color: rgba(255, 255, 255, 0.08);
-}
-
-/* Navbar auth buttons — scale + glow on hover */
-.btn-nav {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.btn-nav:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.35);
-}
-
-/* ===== CHANGE 4: Click press effect on ALL buttons ===== */
-button:active,
-a[href]:active,
-.btn-green:active,
-.btn-outline:active,
-.btn-nav:active {
-  transform: translateY(0px) scale(0.97) !important;
-  transition-duration: 0.1s !important;
-}
-
-/* ===== Performance: GPU-hint animated layers ===== */
-.auth-orb-1,
-.auth-orb-2,
-.auth-orb-3,
-.glass-card {
-  will-change: transform, opacity;
-}
-
-/* ===== CHANGE 2: Auth page left panel — gradient bg + center glow ===== */
-.left-panel {
-  background: linear-gradient(135deg, #0a0a0a 0%, #0d1f0d 50%, #0a0a0a 100%);
-  position: relative;
-  overflow: hidden;
-}
-
-/* Glowing orb behind left panel text */
-.left-panel::before {
-  content: '';
-  position: absolute;
-  width: 350px;
-  height: 350px;
-  background: radial-gradient(circle, rgba(0, 255, 136, 0.07) 0%, transparent 70%);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
-/* CHANGE 2: Right panel — subtle bg + blur */
-.right-panel {
-  background: rgba(15, 15, 15, 0.6);
-  position: relative;
-}
-
-/* CHANGE 2: Pulsing glow on brand/logo icons */
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 10px rgba(0, 255, 136, 0.25); }
-  50% { box-shadow: 0 0 28px rgba(0, 255, 136, 0.6); }
-}
-
-.brand-icon {
-  animation: pulse-glow 2.5s ease-in-out infinite;
-}
-
-/* ===== CHANGE 3: Google / social button hover — Clerk override ===== */
 .cl-socialButtonsBlockButton,
 .clerk-google-btn {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 12px !important;
-  color: #ffffff !important;
-  padding: 14px 16px !important;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  background: var(--color-ink-2) !important;
+  border: 1.5px solid rgb(255 255 255 / 0.15) !important;
+  border-radius: 0.6rem !important;
+  color: var(--color-paper) !important;
 }
-
 .cl-socialButtonsBlockButton:hover,
 .clerk-google-btn:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: rgba(255, 255, 255, 0.28) !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+  border-color: rgb(255 255 255 / 0.35) !important;
 }
 
-/* ===== CHANGE 4: Continue / primary button — gradient + shine ===== */
 .cl-formButtonPrimary,
 .clerk-continue-btn {
-  background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%) !important;
-  border: none !important;
-  border-radius: 12px !important;
-  color: #000000 !important;
+  background: var(--color-signal) !important;
+  border: 2px solid #000 !important;
+  border-radius: 0.6rem !important;
+  color: var(--color-ink) !important;
   font-weight: 700 !important;
-  padding: 14px 24px !important;
-  letter-spacing: 0.02em !important;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  position: relative !important;
-  overflow: hidden !important;
+  box-shadow: 4px 4px 0 0 #000 !important;
+  transition: transform 120ms ease, box-shadow 120ms ease !important;
 }
-
-/* Shine sweep on hover */
-.cl-formButtonPrimary::after,
-.clerk-continue-btn::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -60%;
-  width: 40%;
-  height: 200%;
-  background: rgba(255, 255, 255, 0.18);
-  transform: skewX(-20deg);
-  transition: left 0.5s ease;
-  pointer-events: none;
-}
-
-.cl-formButtonPrimary:hover::after,
-.clerk-continue-btn:hover::after {
-  left: 120%;
-}
-
 .cl-formButtonPrimary:hover,
 .clerk-continue-btn:hover {
-  background: linear-gradient(135deg, #00ff88 0%, #00e676 100%) !important;
-  transform: translateY(-3px) !important;
-  box-shadow: 0 10px 35px rgba(0, 255, 136, 0.4) !important;
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 6px 0 0 #000 !important;
 }
-
 .cl-formButtonPrimary:active,
 .clerk-continue-btn:active {
-  transform: translateY(0) scale(0.97) !important;
-  transition-duration: 0.1s !important;
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 0 #000 !important;
 }
 
-/* ===== CHANGE 2: Clerk input field overrides ===== */
 .cl-formFieldInput,
 .clerk-input {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 12px !important;
-  color: #ffffff !important;
-  padding: 14px 16px !important;
-  transition: all 0.3s ease !important;
+  background: var(--color-ink-2) !important;
+  border: 1.5px solid rgb(255 255 255 / 0.15) !important;
+  border-radius: 0.6rem !important;
+  color: var(--color-paper) !important;
 }
-
 .cl-formFieldInput:focus,
 .clerk-input:focus {
-  border-color: #00ff88 !important;
-  background: rgba(0, 255, 136, 0.04) !important;
-  box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.1), 0 0 20px rgba(0, 255, 136, 0.05) !important;
-}
-
-/* ===== CHANGE 5: Entrance animations for auth panels ===== */
-@keyframes fadeInLeft {
-  from { opacity: 0; transform: translateX(-30px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes fadeInRight {
-  from { opacity: 0; transform: translateX(30px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-.left-panel {
-  animation: fadeInLeft 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.right-panel {
-  animation: fadeInRight 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
-}
-
-/* Respect user preference for reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+  border-color: var(--color-signal) !important;
+  box-shadow: 0 0 0 3px rgb(43 212 107 / 0.15) !important;
 }

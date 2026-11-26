@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { motion } from "motion/react";
@@ -188,7 +188,7 @@ export default function ComplaintPage() {
       heatmapSummary,
       peakSummary,
       audioSummary,
-      report ? `Certificate ID: ${report.certificate.certificate_id}. File hash: ${report.certificate.file_hash}.` : "",
+      report ? `Certificate ID: ${report.certificate.certificate_id}. Report hash (SHA-256): ${report.certificate.file_hash}.` : "",
       report?.report_record?.share_token ? `Shared forensic report: ${sharedReportLinks.reportPage}. Shared PDF report: ${sharedReportLinks.pdfPage}.` : "",
       notesLine,
       "I request that the matter be reviewed and investigated by the relevant cybercrime authorities.",
@@ -235,7 +235,7 @@ export default function ComplaintPage() {
       baseContent.push(`Shared PDF report: ${sharedReportLinks.pdfPage || "Pending Submission"}`);
       baseContent.push("");
       baseContent.push(`Certificate ID: ${report?.certificate.certificate_id ?? "Loading..."}`);
-      baseContent.push(`File hash: ${report?.certificate.file_hash ?? "Loading..."}`);
+      baseContent.push(`Report hash (SHA-256): ${report?.certificate.file_hash ?? "Loading..."}`);
     }
 
     return baseContent.join("\n");
@@ -274,7 +274,7 @@ export default function ComplaintPage() {
 
     const payload = {
       report_id: reportId,
-      recipient_email: emailOverride || recipientEmail || "sujal.jadhav2627@gmail.com",
+      recipient_email: emailOverride || recipientEmail,
       cc_email: complainantEmail || null,
       subject: emailSubject,
       narrative: complaintNarrative,
@@ -310,7 +310,11 @@ export default function ComplaintPage() {
   };
 
   const openEmailDraft = async () => {
-    const targetEmail = recipientList || "sujal.jadhav2627@gmail.com";
+    const targetEmail = recipientList;
+    if (!targetEmail) {
+      setError("Add at least one authority email before preparing the draft.");
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -352,196 +356,197 @@ export default function ComplaintPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Complaint Assistant</h1>
-        <p className="text-sm text-gray-400 mt-2">
-          Prepare a cybercrime complaint email using your forensic report, share the linked evidence, and track complaint status.
-        </p>
-      </div>
+    <div className="mx-auto max-w-6xl">
+      <p className="eyebrow mb-3 text-signal">Complaint assistant</p>
+      <h1 className="display text-4xl text-paper sm:text-5xl">Report it to the right people.</h1>
+      <p className="mt-3 max-w-2xl text-paper/60">
+        Turn a saved forensic report into a complaint email for a cyber cell, platform or lawyer, then track what you sent.
+      </p>
 
       {error && (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/5 p-4 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
-          <p className="text-red-300 text-sm">{error}</p>
+        <div role="alert" className="mt-6 flex items-start gap-3 rounded-2xl border border-alert/30 bg-alert/10 p-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 flex-none text-alert" />
+          <p className="text-sm text-paper/80">{error}</p>
         </div>
       )}
 
-      <div className="grid lg:grid-cols-[1.1fr,0.9fr] gap-6">
+      <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-6">
-          <section className="rounded-3xl border border-white/10 bg-[#111] p-6">
-            <div className="flex items-center gap-3 mb-5">
-              <FileText className="w-5 h-5 text-blue-400" />
-              <h2 className="text-lg font-bold text-white">Incident Details</h2>
+          <Card step="01" title="Incident details">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Your name" value={user?.fullName ?? ""} readOnly />
+              <Field label="Your email" value={complainantEmail} readOnly />
+              <Field label="Platform / app" value={platform} onChange={setPlatform} placeholder="WhatsApp, Instagram, YouTube…" />
+              <Field label="Incident date" type="date" value={incidentDate} onChange={setIncidentDate} />
+              <Field label="City / state" value={location} onChange={setLocation} placeholder="Your city and state" />
+              <Field label="Suspicious URL" value={suspectUrl} onChange={setSuspectUrl} placeholder="https://…" />
             </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <Field label="Your Name" value={user?.fullName ?? ""} readOnly />
-              <Field label="Your Email" value={complainantEmail} readOnly />
-              <Field label="Platform / App" value={platform} onChange={setPlatform} placeholder="WhatsApp, Instagram, YouTube..." />
-              <Field label="Incident Date" value={incidentDate} onChange={setIncidentDate} placeholder="YYYY-MM-DD" />
-              <Field label="City / State" value={location} onChange={setLocation} placeholder="Your city and state" />
-              <Field label="Suspicious URL" value={suspectUrl} onChange={setSuspectUrl} placeholder="https://..." />
-              <Field label="Authority Email" value={recipientEmail} onChange={setRecipientEmail} placeholder="cybercell@..., police@..., legal@..." />
-            </div>
-            <p className="mt-3 text-xs text-gray-500">
-              Enter one or more authority email addresses separated by commas. Your signed-in email is copied automatically on the draft.
-            </p>
 
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">Additional Notes</label>
+              <Field
+                label="Send to (authority email)"
+                value={recipientEmail}
+                onChange={setRecipientEmail}
+                placeholder="cybercell@…, legal@…"
+              />
+              <p className="mt-2 text-xs text-paper/45">
+                Separate several addresses with commas. Your own email is CC&apos;d on the draft.
+              </p>
+            </div>
+
+            <div className="mt-4">
+              <label htmlFor="incident-notes" className="eyebrow mb-2 block text-[0.65rem] text-paper/55">Additional notes</label>
               <textarea
+                id="incident-notes"
                 value={incidentNotes}
                 onChange={(e) => setIncidentNotes(e.target.value)}
-                placeholder="Describe how you received the content, why it is harmful, and any threats or impersonation involved."
-                className="w-full min-h-36 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-gray-500 outline-none focus:border-green-500/40"
+                placeholder="How you received the content, why it is harmful, any threats or impersonation."
+                className="min-h-36 w-full rounded-xl border border-white/15 bg-ink px-4 py-3 text-sm text-paper outline-none placeholder:text-paper/35 focus:border-signal"
               />
             </div>
-          </section>
+          </Card>
 
-          <section className="rounded-3xl border border-white/10 bg-[#111] p-6">
-            <div className="flex items-center gap-3 mb-5">
-              <ShieldAlert className="w-5 h-5 text-red-400" />
-              <h2 className="text-lg font-bold text-white">Complaint Narrative</h2>
-            </div>
+          <Card step="02" title="Complaint text">
             {loading ? (
-              <div className="flex items-center gap-3 text-gray-400">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Loading linked report...
-              </div>
+              <p className="flex items-center gap-3 text-paper/60">
+                <Loader2 className="h-5 w-5 animate-spin" /> Loading linked report…
+              </p>
             ) : (
               <>
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <p className="text-sm text-gray-200 leading-7">{complaintNarrative}</p>
+                <div className="rounded-xl border-[1.5px] border-ink bg-paper p-5 text-ink">
+                  <p className="text-sm leading-7">{complaintNarrative}</p>
                 </div>
-                <div className="flex flex-wrap gap-3 mt-4">
-                  <button
-                    type="button"
-                    onClick={downloadText}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-gray-200 hover:bg-white/10 transition-colors"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download TXT
-                  </button>
+                <div className="mt-5 flex flex-wrap gap-3">
                   <button
                     type="button"
                     onClick={openEmailDraft}
-                    disabled={submitting}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-300 hover:bg-blue-500/15 transition-colors disabled:opacity-50"
+                    disabled={submitting || !recipientList}
+                    title={recipientList ? undefined : "Add an authority email first"}
+                    className="btn-chunky bg-signal text-ink !py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                    Prepare Email Draft
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                    Prepare email draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={downloadText}
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-paper hover:bg-white/5"
+                  >
+                    <Download className="h-4 w-4" /> Download .txt
                   </button>
                   <button
                     type="button"
                     onClick={markComplaintSent}
                     disabled={submitting || !activeComplaintId}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/15 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-paper hover:bg-white/5 disabled:opacity-40"
                   >
-                    <Send className="w-4 h-4" />
-                    Mark Complaint Sent
+                    <Send className="h-4 w-4" /> Mark as sent
                   </button>
                 </div>
+                {!recipientList && (
+                  <p className="mt-3 text-xs text-caution">Add at least one authority email above to prepare the draft.</p>
+                )}
               </>
             )}
-          </section>
+          </Card>
         </div>
 
         <div className="space-y-6">
-          <section className="rounded-3xl border border-white/10 bg-[#111] p-6">
-            <h2 className="text-lg font-bold text-white mb-5">Linked Forensic Report</h2>
+          <Card title="Linked report" icon={<FileText className="h-4 w-4" />}>
             {!reportId ? (
-              <p className="text-sm text-gray-400">
-                Open this page from a saved report to prefill the complaint with forensic evidence.
+              <p className="text-sm text-paper/60">
+                Open this page from a saved report (Reports → File a complaint) to attach its evidence.
               </p>
             ) : loading ? (
-              <div className="flex items-center gap-3 text-gray-400">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Loading report evidence...
-              </div>
+              <p className="flex items-center gap-3 text-paper/60">
+                <Loader2 className="h-5 w-5 animate-spin" /> Loading report evidence…
+              </p>
             ) : report ? (
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+              <motion.dl initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                 <InfoRow label="File" value={report.analysis.filename} />
                 <InfoRow label="Verdict" value={`${report.analysis.verdict} (${report.analysis.confidence.toFixed(1)}%)`} />
-                <InfoRow label="Certificate ID" value={report.certificate.certificate_id} mono />
                 <InfoRow label="Generated" value={formatDate(report.certificate.issued_at)} />
-                <InfoRow label="File Hash" value={report.certificate.file_hash} mono />
-                {sharedReportLinks.reportPage && (
-                  <InfoRow label="Shared Report Link" value={sharedReportLinks.reportPage} mono />
-                )}
-                {sharedReportLinks.pdfPage && (
-                  <InfoRow label="Shared PDF Link" value={sharedReportLinks.pdfPage} mono />
-                )}
+                <InfoRow label="Certificate ID" value={report.certificate.certificate_id} mono />
+                <InfoRow label="Report hash (SHA-256)" value={report.certificate.file_hash} mono />
+                {sharedReportLinks.reportPage && <InfoRow label="Shared report link" value={sharedReportLinks.reportPage} mono />}
+                {sharedReportLinks.pdfPage && <InfoRow label="Shared PDF link" value={sharedReportLinks.pdfPage} mono />}
                 {report.heatmap && (
                   <InfoRow
                     label="Heatmap"
-                    value={`${report.heatmap.suspicious_frame_count ?? 0} suspicious frames / ${report.heatmap.total_frames_analyzed ?? 0} analyzed`}
+                    value={`${report.heatmap.suspicious_frame_count ?? 0} of ${report.heatmap.total_frames_analyzed ?? 0} frames suspicious`}
                   />
                 )}
                 {topHeatmap && topHeatmap.length > 0 && (
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Peak Timestamps</p>
-                    <div className="space-y-2">
+                    <dt className="eyebrow mb-2 text-[0.62rem] text-paper/45">Peak timestamps</dt>
+                    <dd className="space-y-1.5">
                       {topHeatmap.map((entry, index) => (
-                        <div key={`${entry.timestamp_ms}-${index}`} className="rounded-xl border border-orange-500/15 bg-orange-500/5 px-3 py-2 text-sm text-orange-200">
-                          {formatTime(entry.timestamp_ms)} - {(entry.fake_score * 100).toFixed(1)}% fake
-                        </div>
+                        <p key={`${entry.timestamp_ms}-${index}`} className="rounded-lg bg-alert/10 px-3 py-2 font-mono text-xs text-paper">
+                          {formatTime(entry.timestamp_ms)} · <span className="text-alert">{(entry.fake_score * 100).toFixed(1)}% fake</span>
+                        </p>
                       ))}
-                    </div>
+                    </dd>
                   </div>
                 )}
-              </motion.div>
+              </motion.dl>
             ) : null}
-          </section>
+          </Card>
 
-          <section className="rounded-3xl border border-white/10 bg-[#111] p-6">
-            <h2 className="text-lg font-bold text-white mb-4">Complaint Tracker</h2>
+          <Card title="Complaint tracker" icon={<ShieldAlert className="h-4 w-4" />}>
             {complaints.length === 0 ? (
-              <p className="text-sm text-gray-400">
-                No complaint draft has been prepared yet for this report.
-              </p>
+              <p className="text-sm text-paper/60">No complaint drafted for this report yet.</p>
             ) : (
-              <div className="space-y-3">
-                {complaints.map((complaint) => (
-                  <div
-                    key={complaint.complaint_id}
-                    className={`rounded-2xl border p-4 ${
-                      complaint.complaint_id === activeComplaintId
-                        ? "border-green-500/20 bg-green-500/5"
-                        : "border-white/10 bg-black/20"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-white">{complaint.subject}</p>
-                        <p className="text-xs text-gray-500 mt-1">{formatDate(complaint.created_at)}</p>
-                        <p className="text-xs text-gray-400 mt-1">Recipient: {complaint.recipient_email}</p>
-                        {complaint.cc_email && (
-                          <p className="text-xs text-gray-400 mt-1">CC: {complaint.cc_email}</p>
-                        )}
+              <ul className="space-y-3">
+                {complaints.map((complaint) => {
+                  const status = STATUS[complaint.status] ?? { label: complaint.status, cls: "bg-white/10 text-paper/70" };
+                  return (
+                    <li
+                      key={complaint.complaint_id}
+                      className={`rounded-xl border p-4 ${
+                        complaint.complaint_id === activeComplaintId ? "border-signal/40 bg-signal/5" : "border-white/10 bg-ink"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-paper">{complaint.subject}</p>
+                          <p className="mt-1 text-xs text-paper/45">{formatDate(complaint.created_at)}</p>
+                          <p className="mt-1 break-all text-xs text-paper/60">To: {complaint.recipient_email}</p>
+                          {complaint.cc_email && <p className="mt-0.5 break-all text-xs text-paper/60">CC: {complaint.cc_email}</p>}
+                        </div>
+                        <span className={`eyebrow inline-flex flex-none items-center gap-1 rounded px-2 py-1 text-[0.6rem] ${status.cls}`}>
+                          {complaint.status === "submitted" && <CheckCircle2 className="h-3 w-3" />}
+                          {status.label}
+                        </span>
                       </div>
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                        complaint.status === "submitted"
-                          ? "bg-green-500/15 text-green-300"
-                          : complaint.status === "email_prepared"
-                            ? "bg-blue-500/15 text-blue-300"
-                            : "bg-amber-500/15 text-amber-300"
-                      }`}>
-                        {complaint.status === "submitted" ? <CheckCircle2 className="w-3 h-3" /> : null}
-                        {complaint.status}
-                      </span>
-                    </div>
-                    {complaint.submitted_at && (
-                      <p className="text-xs text-green-300 mt-3">Marked sent: {formatDate(complaint.submitted_at)}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      {complaint.submitted_at && <p className="mt-3 text-xs text-signal">Marked sent {formatDate(complaint.submitted_at)}</p>}
+                    </li>
+                  );
+                })}
+              </ul>
             )}
-          </section>
+          </Card>
         </div>
       </div>
     </div>
+  );
+}
+
+const STATUS: Record<string, { label: string; cls: string }> = {
+  draft: { label: "Draft", cls: "bg-caution/15 text-caution" },
+  email_prepared: { label: "Email drafted", cls: "bg-white/10 text-paper/80" },
+  submitted: { label: "Sent", cls: "bg-signal/15 text-signal" },
+};
+
+function Card({ step, title, icon, children }: { step?: string; title: string; icon?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-white/10 bg-ink-2 p-5 sm:p-6">
+      <h2 className="mb-5 flex items-center gap-2 font-display text-xl font-extrabold text-paper">
+        {step && <span className="font-mono text-xs font-semibold text-signal">{step}</span>}
+        {icon && <span className="text-paper/50">{icon}</span>}
+        {title}
+      </h2>
+      {children}
+    </section>
   );
 }
 
@@ -551,40 +556,35 @@ function Field({
   onChange,
   placeholder,
   readOnly = false,
+  type = "text",
 }: {
   label: string;
   value: string;
   onChange?: (value: string) => void;
   placeholder?: string;
   readOnly?: boolean;
+  type?: string;
 }) {
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-300 mb-2">{label}</label>
+    <label className="block">
+      <span className="eyebrow mb-2 block text-[0.65rem] text-paper/55">{label}</span>
       <input
+        type={type}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         placeholder={placeholder}
         readOnly={readOnly}
-        className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-gray-500 outline-none focus:border-green-500/40 read-only:text-gray-400"
+        className="w-full rounded-xl border border-white/15 bg-ink px-4 py-3 text-sm text-paper outline-none [color-scheme:dark] placeholder:text-paper/35 focus:border-signal read-only:text-paper/50"
       />
-    </div>
+    </label>
   );
 }
 
-function InfoRow({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function InfoRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-wider text-gray-500 mb-1">{label}</p>
-      <p className={`text-gray-200 ${mono ? "font-mono text-xs break-all" : "text-sm"}`}>{value}</p>
+      <dt className="eyebrow mb-1 text-[0.62rem] text-paper/45">{label}</dt>
+      <dd className={`text-paper/85 ${mono ? "break-all font-mono text-xs" : "text-sm"}`}>{value}</dd>
     </div>
   );
 }

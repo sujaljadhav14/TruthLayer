@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { motion } from "motion/react";
 import {
   BarChart3,
   Loader2,
   AlertTriangle,
-  Eye,
   Upload,
   FileVideo,
   X,
@@ -47,10 +45,10 @@ function formatMs(ms: number): string {
 }
 
 function getColor(score: number): string {
-  if (score < 0.3) return "#22c55e";
-  if (score < 0.5) return "#eab308";
-  if (score < 0.7) return "#f97316";
-  return "#ef4444";
+  if (score < 0.3) return "#2bd46b";
+  if (score < 0.5) return "#ffb020";
+  if (score < 0.7) return "#ff8a3d";
+  return "#ff4b3e";
 }
 
 export default function HeatmapTimeline({ initialFile = null, autoAnalyze = false, compact = false, onResult }: Props) {
@@ -129,268 +127,177 @@ export default function HeatmapTimeline({ initialFile = null, autoAnalyze = fals
     }
   };
 
-  // Loading state
+  const Header = ({ right }: { right?: React.ReactNode }) => (
+    <div className="mb-5 flex items-start justify-between gap-4">
+      <div>
+        <p className="eyebrow text-signal">Frame evidence</p>
+        <h3 className="mt-2 font-display text-2xl font-extrabold text-paper">Where in the video</h3>
+        <p className="mt-1 text-sm text-paper/60">Grad-CAM heatmaps show which parts of each frame drove the model&apos;s call.</p>
+      </div>
+      {right}
+    </div>
+  );
+
   if (loading) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-[#111] border border-orange-500/20 rounded-3xl p-8"
-      >
-        <div className="flex flex-col items-center gap-4 py-6">
-          <div className="relative">
-            <div className="w-14 h-14 rounded-full border-2 border-orange-500/30 flex items-center justify-center">
-              <Loader2 className="w-7 h-7 text-orange-500 animate-spin" />
-            </div>
-            <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-orange-500 rounded-full animate-pulse" />
-          </div>
-          <div className="text-center">
-            <p className="text-white font-bold">Running Grad-CAM Analysis</p>
-            <p className="text-gray-400 text-sm mt-1">
-              Generating per-frame heatmaps and suspicion timeline...
-            </p>
-          </div>
-          <div className="w-full max-w-xs mt-2">
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-gradient-to-r from-orange-600 to-amber-400 rounded-full"
-                initial={{ width: "0%" }}
-                animate={{ width: "100%" }}
-                transition={{ duration: 8, ease: "easeInOut" }}
-              />
-            </div>
-          </div>
-        </div>
-      </motion.div>
+      <section className="rounded-2xl border border-white/10 bg-ink-2 p-5 sm:p-7">
+        <Header />
+        <p className="flex items-center gap-3 text-sm text-paper/70">
+          <Loader2 className="h-5 w-5 animate-spin text-signal" />
+          Building a heatmap for each frame. This takes a little longer than the verdict.
+        </p>
+      </section>
     );
   }
 
   if (error) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-[#111] border border-red-500/20 rounded-3xl p-6"
-      >
+      <section className="rounded-2xl border border-alert/30 bg-ink-2 p-5 sm:p-7" role="alert">
         <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+          <AlertTriangle className="mt-0.5 h-5 w-5 flex-none text-alert" />
           <div>
-            <p className="text-red-400 font-bold text-sm">Heatmap Analysis Failed</p>
-            <p className="text-red-400/70 text-xs mt-1">{error}</p>
+            <p className="font-semibold text-paper">Heatmap analysis failed</p>
+            <p className="mt-1 text-sm text-paper/60">{error}</p>
           </div>
         </div>
         {file && (
-          <button
-            onClick={() => analyzeFile(file)}
-            className="mt-4 w-full bg-orange-500/10 border border-orange-500/30 text-orange-400 font-bold py-2.5 rounded-xl hover:bg-orange-500/20 transition-all text-sm"
-          >
-            Retry Heatmap
+          <button onClick={() => analyzeFile(file)} className="btn-chunky mt-5 bg-paper text-ink !py-2 text-sm">
+            Try again
           </button>
         )}
-      </motion.div>
+      </section>
     );
   }
 
   if (!result) {
     return (
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-        <div className="bg-[#111] border border-white/10 rounded-3xl p-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center border border-orange-500/20">
-              <Eye className="w-5 h-5 text-orange-400" />
+      <section className="rounded-2xl border border-white/10 bg-ink-2 p-5 sm:p-7">
+        <Header />
+
+        {!compact && (
+          <label
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            className={`block cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+              dragActive ? "border-signal bg-signal/5" : "border-white/15 hover:border-white/30"
+            }`}
+          >
+            <input type="file" accept="video/*" onChange={handleFileSelect} className="sr-only" />
+            <Upload className={`mx-auto mb-3 h-8 w-8 ${dragActive ? "text-signal" : "text-paper/40"}`} />
+            <span className="block font-semibold text-paper">Drop a video for frame-level analysis</span>
+            <span className="mt-1 block text-sm text-paper/50">MP4, AVI, MOV</span>
+          </label>
+        )}
+
+        {file && (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-ink p-4">
+              <FileVideo className="h-5 w-5 flex-none text-signal" />
+              <span className="flex-1 truncate text-sm text-paper">{file.name}</span>
+              {!compact && (
+                <button onClick={() => setFile(null)} aria-label="Remove file" className="rounded p-1 text-paper/50 hover:text-paper">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-bold text-white">Frame-Level Deep Analysis</h3>
-              <p className="text-sm text-gray-400">
-                Grad-CAM spatial analysis - see where and when deepfakes occur
-              </p>
-            </div>
+            <button onClick={analyze} disabled={loading} className="btn-chunky w-full justify-center bg-signal text-ink disabled:opacity-50">
+              <BarChart3 className="h-4 w-4" /> Generate heatmap
+            </button>
           </div>
-
-          {!compact && (
-            <div
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
-                dragActive ? "border-orange-500 bg-orange-500/5" : "border-white/10 bg-black/20 hover:border-white/20"
-              }`}
-            >
-              <input
-                type="file"
-                accept="video/*"
-                onChange={handleFileSelect}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-              <Upload className={`w-8 h-8 mx-auto mb-3 ${dragActive ? "text-orange-400" : "text-gray-500"}`} />
-              <p className="text-white font-medium">Drop video for frame-level analysis</p>
-              <p className="text-gray-500 text-sm mt-1">MP4, AVI, MOV - generates Grad-CAM heatmap per frame</p>
-            </div>
-          )}
-
-          {file && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 space-y-3">
-              <div className="bg-black/20 border border-white/10 rounded-xl p-4 flex items-center gap-3">
-                <FileVideo className="w-5 h-5 text-orange-400 flex-shrink-0" />
-                <span className="text-white text-sm flex-1 truncate">{file.name}</span>
-                {!compact && (
-                  <button
-                    onClick={() => setFile(null)}
-                    className="w-6 h-6 rounded border border-white/10 flex items-center justify-center text-gray-400 hover:text-white"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={analyze}
-                disabled={loading}
-                className="w-full bg-orange-500/10 border border-orange-500/30 text-orange-400 font-bold py-3 rounded-xl hover:bg-orange-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <BarChart3 className="w-4 h-4" /> Generate Heatmap
-              </button>
-            </motion.div>
-          )}
-        </div>
-      </motion.div>
+        )}
+      </section>
     );
   }
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-      <div className="bg-[#111] border border-white/10 rounded-3xl p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center border border-orange-500/20">
-            <Eye className="w-5 h-5 text-orange-400" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-bold text-white">Frame-Level Deep Analysis</h3>
-            <p className="text-sm text-gray-400">
-              Grad-CAM spatial analysis - see where and when deepfakes occur
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500">{result.suspicious_frame_count}/{result.total_frames_analyzed} suspicious</p>
-            <p className="text-xs text-gray-600">{formatMs(result.duration_ms)} duration</p>
-          </div>
-        </div>
+  const current = result.timeline[selectedFrame];
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
-          <div
-            className={`rounded-2xl border p-5 flex items-center gap-4 ${
-              result.verdict === "FAKE" ? "bg-red-500/5 border-red-500/20" : "bg-green-500/5 border-green-500/20"
-            }`}
-          >
-            <div className="flex-1">
-              <h4 className="text-xl font-bold text-white">
-                {result.verdict === "FAKE" ? "Manipulation Detected" : "Authentic"}
-              </h4>
-              <p className="text-gray-400 text-sm mt-1">
-                {result.suspicious_frame_count} / {result.total_frames_analyzed} suspicious frames
-                {" | "}
-                {formatMs(result.duration_ms)} duration
-              </p>
-            </div>
-            <div
-              className={`text-2xl font-black px-4 py-2 rounded-xl border ${
-                result.verdict === "FAKE"
-                  ? "bg-red-500/10 text-red-500 border-red-500/30"
-                  : "bg-green-500/10 text-green-500 border-green-500/30"
+  return (
+    <section className="rounded-2xl border border-white/10 bg-ink-2 p-5 sm:p-7">
+      <Header
+        right={
+          <div className="text-right">
+            <p className="display text-3xl text-paper tabular-nums">
+              {result.suspicious_frame_count}/{result.total_frames_analyzed}
+            </p>
+            <p className="eyebrow mt-1 text-paper/45">frames flagged</p>
+          </div>
+        }
+      />
+
+      {/* Standalone use shows the heatmap's own verdict; on the analyze page the main summary card already does. */}
+      {!compact && (
+        <div
+          className={`mb-5 flex items-center justify-between gap-4 rounded-xl border p-4 ${
+            result.verdict === "FAKE" ? "border-alert/30 bg-alert/10" : "border-signal/30 bg-signal/10"
+          }`}
+        >
+          <p className="font-display text-lg font-extrabold text-paper">
+            {result.verdict === "FAKE" ? "Manipulation detected" : "No manipulation detected"}
+          </p>
+          <span className={`font-mono font-semibold ${result.verdict === "FAKE" ? "text-alert" : "text-signal"}`}>
+            {result.confidence.toFixed(1)}%
+          </span>
+        </div>
+      )}
+
+      <p className="eyebrow mb-2 text-paper/50">Chance each frame is manipulated · click a frame</p>
+      <div className="flex h-10 gap-px overflow-hidden rounded-lg border border-white/10 bg-ink p-1">
+        {result.timeline.map((entry, i) => (
+          <button
+            key={i}
+            onClick={() => setSelectedFrame(i)}
+            aria-label={`Frame ${i + 1}: ${(entry.fake_score * 100).toFixed(0)}% fake`}
+            title={`${formatMs(entry.timestamp_ms)} · ${(entry.fake_score * 100).toFixed(0)}% fake`}
+            className={`flex-1 rounded-sm transition-opacity ${selectedFrame === i ? "opacity-100 ring-2 ring-paper" : "opacity-75 hover:opacity-100"}`}
+            style={{ backgroundColor: getColor(entry.fake_score) }}
+          />
+        ))}
+      </div>
+      <div className="mt-1.5 flex justify-between font-mono text-[0.68rem] text-paper/45">
+        <span>0:00</span>
+        <span>{formatMs(result.duration_ms)}</span>
+      </div>
+
+      {result.frames.length > 0 && current && (
+        <div className="mt-6">
+          <div className="mb-2 flex items-baseline justify-between gap-3">
+            <p className="eyebrow text-paper/50">
+              Frame {selectedFrame + 1} · {formatMs(current.timestamp_ms)}
+            </p>
+            <p className="font-mono text-xs text-paper/60">{(current.fake_score * 100).toFixed(1)}% fake</p>
+          </div>
+          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-black">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`data:image/jpeg;base64,${result.frames[selectedFrame]}`}
+              alt={`Frame ${selectedFrame + 1} with Grad-CAM heatmap`}
+              className="max-h-80 w-full object-contain"
+            />
+            <span
+              className={`eyebrow absolute right-3 top-3 rounded px-2 py-1 text-[0.62rem] ${
+                current.is_suspicious ? "bg-alert text-ink" : "bg-signal text-ink"
               }`}
             >
-              {result.confidence.toFixed(1)}%
-            </div>
+              {current.is_suspicious ? "Suspicious" : "Clean"}
+            </span>
           </div>
+        </div>
+      )}
 
-          <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-              Frame-Level Fake Probability Timeline
-            </p>
-            <div className="flex h-10 rounded-xl overflow-hidden gap-px bg-black/30 p-1 cursor-pointer">
-              {result.timeline.map((entry, i) => (
-                <div
-                  key={i}
-                  onClick={() => setSelectedFrame(i)}
-                  title={`${formatMs(entry.timestamp_ms)} - ${(entry.fake_score * 100).toFixed(0)}% fake`}
-                  className={`flex-1 rounded transition-opacity ${
-                    selectedFrame === i ? "opacity-100 ring-2 ring-white/40" : "opacity-80 hover:opacity-100"
-                  }`}
-                  style={{ backgroundColor: getColor(entry.fake_score) }}
-                />
-              ))}
-            </div>
-            <div className="flex justify-between text-[10px] text-gray-500 mt-1.5 px-0.5">
-              <span>0:00</span>
-              <span>{formatMs(result.duration_ms)}</span>
-            </div>
-          </div>
-
-          {result.frames.length > 0 && (
-            <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                Grad-CAM Overlay - Frame {selectedFrame + 1}
-                <span className="text-gray-600 ml-2">
-                  ({formatMs(result.timeline[selectedFrame]?.timestamp_ms ?? 0)} |{" "}
-                  {((result.timeline[selectedFrame]?.fake_score ?? 0) * 100).toFixed(1)}% fake)
-                </span>
-              </p>
-              <div className="rounded-2xl overflow-hidden border border-white/10 bg-black relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`data:image/jpeg;base64,${result.frames[selectedFrame]}`}
-                  alt={`Frame ${selectedFrame + 1} Grad-CAM`}
-                  className="w-full max-h-80 object-contain"
-                />
-                <div
-                  className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold border ${
-                    result.timeline[selectedFrame]?.is_suspicious
-                      ? "bg-red-500/20 text-red-400 border-red-500/30"
-                      : "bg-green-500/20 text-green-400 border-green-500/30"
-                  }`}
-                >
-                  {result.timeline[selectedFrame]?.is_suspicious ? "Suspicious" : "Clean"}
-                </div>
-              </div>
-
-              <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-                {result.timeline.map((entry, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedFrame(i)}
-                    className={`flex-shrink-0 w-10 h-10 rounded-lg text-[10px] font-bold border transition-all ${
-                      selectedFrame === i
-                        ? "ring-2 ring-white/50 border-transparent"
-                        : "border-white/10 hover:border-white/20"
-                    }`}
-                    style={{
-                      backgroundColor: `${getColor(entry.fake_score)}33`,
-                      borderColor: selectedFrame === i ? getColor(entry.fake_score) : undefined,
-                      color: getColor(entry.fake_score),
-                    }}
-                    title={`Frame ${i + 1}: ${(entry.fake_score * 100).toFixed(0)}%`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {!compact && (
-            <button
-              onClick={() => {
-                setResult(null);
-                setFile(null);
-                onResult?.(null);
-              }}
-              className="w-full bg-white/5 border border-white/10 text-gray-400 py-3 rounded-xl hover:bg-white/10 transition-colors text-sm"
-            >
-              Analyze Another Video
-            </button>
-          )}
-        </motion.div>
-      </div>
-    </motion.div>
+      {!compact && (
+        <button
+          onClick={() => {
+            setResult(null);
+            setFile(null);
+            onResult?.(null);
+          }}
+          className="mt-6 w-full rounded-xl border border-white/15 py-3 text-sm font-semibold text-paper/70 hover:bg-white/5"
+        >
+          Analyze another video
+        </button>
+      )}
+    </section>
   );
 }

@@ -68,7 +68,9 @@ ever drops or replaces the ML score, it fails. Keep it that way when changing th
 - Patterns: numbered section eyebrows (`01 — LABEL`), heavy headlines with one *italic* emphasis word,
   "chunky" buttons with a hard offset shadow (`.btn-chunky`), halftone dot textures (`.halftone`),
   paper cards with 1.5px ink borders on light sections.
-- Reusable pieces: `components/landing/*` (landing sections), `components/analysis/*` (result views).
+- Reusable pieces: `components/landing/*` (landing sections), `components/analysis/*` (result views),
+  `components/AuthShell.tsx` (sign-in / sign-up layout + Clerk appearance).
+- Verdicts are always three-state (fake / real / uncertain) with alert / signal / caution colours.
 
 ## Repo map
 
@@ -92,7 +94,8 @@ docs/ROADMAP.md              status, next tasks, changelog  ← keep updated
 ## Git
 
 - Work on a feature branch (`feature/<area>-<short>`), merge into `main`. Don't commit or push unless asked.
-- Commit messages: `feat: …`, `fix: …`, `chore: …`, `docs: …`. **No `Co-Authored-By` / AI attribution lines.**
+- Commits: medium-sized, one topic each. Short human messages: a lowercase subject plus 1-2 plain lines
+  saying what changed and why. **No `Co-Authored-By` / AI attribution lines.**
 - `backend/.env` is intentionally committed (private repo, team decision). Never make the repo public
   without removing it and rotating `HF_TOKEN`.
 - The `gh` CLI isn't installed on the main dev machine; merges are done locally (`git merge --no-ff`).
@@ -103,3 +106,7 @@ docs/ROADMAP.md              status, next tasks, changelog  ← keep updated
   SVG ids must be unique per instance (`useId`) — duplicate `clipPath` ids resolve to the hidden copy.
 - Animate SVG with CSS transforms/transitions, not `motion` attribute animation (cx/cy came out `undefined`).
 - If the dev server serves stale client JS after big edits, stop it, delete `frontend/.next`, restart.
+- Tailwind arbitrary grid columns use `_`, not `,`: `lg:grid-cols-[340px_1fr]`.
+- Dashboard pages need a Clerk session; to look at them locally without one, render them from a
+  temporary route that mocks `window.fetch` (delete it before committing).
+- Git Bash rewrites `branch:path` args (e.g. `git show main:file`); prefix with `MSYS_NO_PATHCONV=1`.
