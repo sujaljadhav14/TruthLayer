@@ -22,6 +22,11 @@ librosa>=0.10.0
 scipy>=1.11.0
 soundfile>=0.12.1
 ffmpeg-python
+# WebRTC voice activity detection (prebuilt wheels; same `import webrtcvad`).
+# Without it the detector falls back to a cruder energy-based VAD.
+webrtcvad-wheels>=2.0.14
+# Optional: `resemblyzer` enables speaker-consistency checks, but it pulls the
+# source-only `webrtcvad` package, which needs C++ build tools on Windows.
 
 # Forensic Reports (Phase 4)
 fpdf2>=2.7.0

@@ -8,5 +8,5 @@ scipy
 torch
 torchaudio
 transformers
-webrtcvad
+webrtcvad-wheels
 resemblyzer
