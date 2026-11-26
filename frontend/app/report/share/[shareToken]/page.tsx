@@ -1,17 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { motion } from "motion/react";
 import { useParams } from "next/navigation";
-import {
-  Activity,
-  AlertTriangle,
-  FileText,
-  Loader2,
-  ShieldAlert,
-  ShieldCheck,
-  Waves,
-} from "lucide-react";
+import { AlertTriangle, Loader2, ScanEye, ShieldCheck } from "lucide-react";
 
 type SharedReport = {
   certificate: {
@@ -48,6 +41,12 @@ type SharedReport = {
   } | null;
 };
 
+const STAMP: Record<string, { text: string; color: string; headline: string }> = {
+  FAKE: { text: "AI-generated", color: "var(--color-alert)", headline: "Likely AI-generated or manipulated" },
+  REAL: { text: "Authentic", color: "var(--color-signal-deep)", headline: "No manipulation detected" },
+  UNCERTAIN: { text: "Uncertain", color: "#c98500", headline: "Inconclusive, treat with caution" },
+};
+
 function formatDate(value?: string) {
   if (!value) return "Unknown";
   return new Date(value).toLocaleString();
@@ -58,6 +57,24 @@ function formatTime(ms: number) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="border-t-[1.5px] border-ink px-6 py-6 sm:px-8">
+      <p className="eyebrow mb-4 text-ink/60">{title}</p>
+      {children}
+    </section>
+  );
+}
+
+function Field({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <dt className="eyebrow text-[0.62rem] text-ink/50">{label}</dt>
+      <dd className={`mt-1 ${mono ? "break-all font-mono text-xs" : "font-semibold"}`}>{value}</dd>
+    </div>
+  );
 }
 
 export default function SharedReportPage() {
@@ -91,122 +108,137 @@ export default function SharedReportPage() {
     ?.filter((entry) => entry.is_suspicious)
     .sort((a, b) => b.fake_score - a.fake_score)
     .slice(0, 3);
+  const stamp = STAMP[report?.analysis.verdict ?? ""] ?? STAMP.UNCERTAIN;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white px-6 py-12">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-8">
-          <p className="text-xs uppercase tracking-[0.2em] text-green-400 mb-3">TruthLayer Shared Report</p>
-          <h1 className="text-3xl font-bold">Forensic Report Preview</h1>
-        </div>
+    <div className="min-h-screen bg-paper px-4 py-10 text-ink sm:px-6 sm:py-14">
+      <div className="mx-auto max-w-3xl">
+        <header className="mb-8 flex items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-ink text-signal">
+              <ScanEye className="h-5 w-5" />
+            </span>
+            <span className="font-display text-xl font-extrabold tracking-tight">TruthLayer</span>
+          </Link>
+          <p className="eyebrow text-ink/60">Shared forensic report</p>
+        </header>
 
         {loading ? (
-          <div className="rounded-3xl border border-white/10 bg-[#111] p-10 flex items-center justify-center gap-3 text-gray-400">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            Loading shared report...
+          <div className="paper-card flex items-center justify-center gap-3 p-10 text-ink/60">
+            <Loader2 className="h-5 w-5 animate-spin" /> Loading shared report…
           </div>
         ) : error || !report ? (
-          <div className="rounded-3xl border border-red-500/20 bg-red-500/5 p-8 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
-            <p className="text-red-300 text-sm">{error ?? "Shared report not found."}</p>
+          <div className="paper-card flex items-start gap-3 p-8" role="alert">
+            <AlertTriangle className="mt-0.5 h-5 w-5 text-alert" />
+            <div>
+              <p className="font-semibold">This report couldn&apos;t be loaded.</p>
+              <p className="mt-1 text-sm text-ink/60">{error ?? "Shared report not found."} The link may be wrong or the report was removed.</p>
+            </div>
           </div>
         ) : (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <section className="rounded-3xl border border-white/10 bg-[#111] p-8">
-              <div className="flex items-start justify-between gap-4 flex-wrap">
-                <div>
-                  <h2 className="text-2xl font-bold">{report.analysis.filename}</h2>
-                  <p className="text-sm text-gray-400 mt-2">{report.certificate.summary}</p>
-                </div>
-                <div className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-bold ${
-                  report.analysis.verdict === "FAKE"
-                    ? "bg-red-500/10 border-red-500/20 text-red-300"
-                    : "bg-green-500/10 border-green-500/20 text-green-300"
-                }`}>
-                  {report.analysis.verdict === "FAKE" ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
-                  {report.analysis.verdict} · {report.analysis.confidence.toFixed(1)}%
-                </div>
-              </div>
+          <motion.article initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="paper-card overflow-hidden">
+            <div className="flex items-center justify-between gap-3 border-b-[1.5px] border-ink px-6 py-3 sm:px-8">
+              <p className="eyebrow truncate text-ink/70">Exhibit · {report.analysis.filename}</p>
+              <p className="eyebrow whitespace-nowrap text-ink/50">{formatDate(report.certificate.issued_at)}</p>
+            </div>
 
-              <div className="grid md:grid-cols-3 gap-4 mt-6">
-                <Metric label="Truth Score" value={`${report.analysis.truth_score}/100`} />
-                <Metric label="Issued" value={formatDate(report.certificate.issued_at)} />
-                <Metric label="Certificate" value={report.certificate.certificate_id.slice(0, 12) + "..."} />
+            <div className="grid gap-6 px-6 py-7 sm:grid-cols-[1fr_auto] sm:px-8">
+              <div>
+                <div
+                  className="mb-4 inline-block -rotate-3 rounded-md px-3 py-1 font-display text-sm font-black uppercase tracking-[0.14em]"
+                  style={{ color: stamp.color, border: `3px double ${stamp.color}` }}
+                >
+                  {stamp.text}
+                </div>
+                <h1 className="display text-3xl sm:text-4xl">{stamp.headline}</h1>
+                <p className="mt-3 max-w-lg text-ink/70">{report.certificate.summary}</p>
               </div>
-            </section>
+              <div className="sm:text-right">
+                <p className="display text-5xl tabular-nums">{report.analysis.confidence.toFixed(0)}%</p>
+                <p className="eyebrow mt-1 text-ink/55">confidence in verdict</p>
+              </div>
+            </div>
 
             {report.analysis.scores && report.analysis.scores.length > 0 && (
-              <section className="rounded-3xl border border-white/10 bg-[#111] p-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Activity className="w-5 h-5 text-green-400" />
-                  <h3 className="text-lg font-bold">Model Scores</h3>
-                </div>
-                <div className="space-y-4">
+              <Section title="Model scores">
+                <div className="space-y-3">
                   {report.analysis.scores.map((score) => (
                     <div key={score.label}>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-300">{score.label}</span>
-                        <span className="text-gray-400">{(score.score * 100).toFixed(1)}%</span>
+                      <div className="mb-1.5 flex justify-between text-sm">
+                        <span className="font-semibold">{score.label}</span>
+                        <span className="font-mono text-ink/60">{(score.score * 100).toFixed(1)}%</span>
                       </div>
-                      <div className="h-3 rounded-full bg-white/5 overflow-hidden">
+                      <div className="h-2.5 overflow-hidden rounded-full border border-ink bg-paper-2/60">
                         <div
-                          className={`h-full rounded-full ${score.label === "FAKE" ? "bg-red-500" : "bg-green-500"}`}
+                          className={`h-full ${score.label === "FAKE" ? "bg-alert" : "bg-signal"}`}
                           style={{ width: `${score.score * 100}%` }}
                         />
                       </div>
                     </div>
                   ))}
                 </div>
-              </section>
+              </Section>
             )}
 
             {report.heatmap && (
-              <section className="rounded-3xl border border-white/10 bg-[#111] p-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Waves className="w-5 h-5 text-orange-400" />
-                  <h3 className="text-lg font-bold">Heatmap Findings</h3>
-                </div>
-                <div className="grid md:grid-cols-3 gap-4 mb-4">
-                  <Metric label="Suspicious Frames" value={`${report.heatmap.suspicious_frame_count ?? 0}`} />
-                  <Metric label="Frames Analyzed" value={`${report.heatmap.total_frames_analyzed ?? 0}`} />
-                  <Metric label="Duration" value={formatTime(report.heatmap.duration_ms ?? 0)} />
-                </div>
+              <Section title="Frame heatmap findings">
+                <dl className="grid grid-cols-3 gap-4">
+                  <Field label="Suspicious frames" value={`${report.heatmap.suspicious_frame_count ?? 0}`} />
+                  <Field label="Frames analysed" value={`${report.heatmap.total_frames_analyzed ?? 0}`} />
+                  <Field label="Duration" value={formatTime(report.heatmap.duration_ms ?? 0)} />
+                </dl>
                 {topHeatmap && topHeatmap.length > 0 && (
-                  <div className="space-y-3">
+                  <ul className="mt-5 space-y-2">
                     {topHeatmap.map((entry, index) => (
-                      <div key={`${entry.timestamp_ms}-${index}`} className="rounded-2xl border border-orange-500/15 bg-orange-500/5 px-4 py-3 text-sm text-orange-200">
-                        Peak anomaly #{index + 1}: {formatTime(entry.timestamp_ms)} - {(entry.fake_score * 100).toFixed(1)}% fake
-                      </div>
+                      <li key={`${entry.timestamp_ms}-${index}`} className="flex items-center gap-3 text-sm">
+                        <span className="h-2.5 w-2.5 rounded-full border border-ink bg-alert" />
+                        Peak #{index + 1} at <span className="font-mono">{formatTime(entry.timestamp_ms)}</span>
+                        <span className="text-ink/60">· {(entry.fake_score * 100).toFixed(1)}% fake</span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 )}
-              </section>
+              </Section>
             )}
 
-            <section className="rounded-3xl border border-white/10 bg-[#111] p-8">
-              <div className="flex items-center gap-3 mb-5">
-                <FileText className="w-5 h-5 text-blue-400" />
-                <h3 className="text-lg font-bold">Certificate</h3>
-              </div>
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
-                <Metric label="Algorithm" value={report.certificate.algorithm} />
-                <Metric label="Issuer" value={report.certificate.issuer} />
-                <Metric label="File Hash" value={report.certificate.file_hash} mono />
-                <Metric label="Signature" value={report.certificate.signature} mono />
-              </div>
-            </section>
-          </motion.div>
-        )}
-      </div>
-    </div>
-  );
-}
+            {report.audio && (
+              <Section title="Audio findings">
+                <dl className="grid grid-cols-3 gap-4">
+                  <Field label="Audio verdict" value={report.audio.verdict ?? "N/A"} />
+                  <Field label="Chance AI-generated" value={report.audio.fake_prob != null ? `${(report.audio.fake_prob * 100).toFixed(0)}%` : "N/A"} />
+                  <Field label="Closest tool" value={report.audio.source_tool ?? "N/A"} />
+                </dl>
+              </Section>
+            )}
 
-function Metric({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-      <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">{label}</p>
-      <p className={`text-white ${mono ? "font-mono text-xs break-all" : "font-semibold"}`}>{value}</p>
+            <Section title="Certificate">
+              <dl className="grid gap-5 sm:grid-cols-2">
+                <Field label="Certificate ID" value={report.certificate.certificate_id} mono />
+                <Field label="Algorithm" value={report.certificate.algorithm} />
+                <Field label="Issuer" value={report.certificate.issuer} />
+                <Field label="Report hash (SHA-256)" value={report.certificate.file_hash} mono />
+                <div className="sm:col-span-2">
+                  <Field label="Signature" value={report.certificate.signature} mono />
+                </div>
+              </dl>
+            </Section>
+
+            <footer className="flex items-start gap-2 border-t-[1.5px] border-ink bg-ink px-6 py-4 text-paper sm:px-8">
+              <ShieldCheck className="mt-0.5 h-4 w-4 flex-none text-signal" />
+              <p className="text-xs text-paper/75">
+                Signed with Ed25519. If anyone edits this report, the signature no longer matches. A verdict is evidence, not proof.
+              </p>
+            </footer>
+          </motion.article>
+        )}
+
+        <p className="mt-8 text-center text-sm text-ink/60">
+          Got a clip of your own?{" "}
+          <Link href="/" className="font-semibold text-ink underline underline-offset-4">
+            Check it with TruthLayer
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

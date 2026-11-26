@@ -183,155 +183,112 @@ export default function ForensicReport({ analysisData, audioData, heatmapData }:
   };
 
   return (
-    <div className="bg-[#111] border border-white/10 rounded-3xl p-8 mt-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20">
-          <FileText className="w-5 h-5 text-blue-400" />
-        </div>
+    <section className="rounded-2xl border border-white/10 bg-ink-2 p-5 sm:p-7">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-bold text-white">Forensic Report & Certificate</h3>
-          <p className="text-sm text-gray-400">Evidence summary plus cryptographically signed certificate</p>
+          <p className="eyebrow text-signal">Evidence report</p>
+          <h3 className="mt-2 font-display text-2xl font-extrabold text-paper">Save a signed report</h3>
+          <p className="mt-1 max-w-md text-sm text-paper/60">
+            Hashed with SHA-256 and signed with Ed25519, so any later edit breaks the signature.
+          </p>
         </div>
 
-        <div className="ml-auto flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {!cert && (
-            <button
-              onClick={generateReport}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-xl text-sm font-bold hover:bg-blue-500/20 transition-all disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-              {loading ? "Generating..." : "Generate & Save Report"}
+            <button onClick={generateReport} disabled={loading} className="btn-chunky bg-signal text-ink !py-2.5 text-sm disabled:opacity-60">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+              {loading ? "Saving…" : "Generate & save"}
             </button>
           )}
-
-          <button
-            onClick={downloadPDF}
-            disabled={pdfLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl text-sm font-bold hover:bg-white/10 transition-all disabled:opacity-50"
-          >
-            {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            {pdfLoading ? "Generating PDF..." : "Download PDF"}
+          <button onClick={downloadPDF} disabled={pdfLoading} className="btn-chunky bg-paper text-ink !py-2.5 text-sm disabled:opacity-60">
+            {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {pdfLoading ? "Building PDF…" : "Download PDF"}
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 bg-red-500/5 border border-red-500/20 rounded-xl p-4 flex items-center gap-3">
-          <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
-          <p className="text-red-400 text-sm">{error}</p>
+        <div role="alert" className="mt-5 flex items-center gap-3 rounded-xl border border-alert/30 bg-alert/10 p-4">
+          <AlertTriangle className="h-4 w-4 flex-none text-alert" />
+          <p className="text-sm text-paper/80">{error}</p>
         </div>
       )}
 
       {evidencePoints.length > 0 && (
-        <div className="mb-4 rounded-2xl border border-white/10 bg-black/20 p-5">
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Report Preview</p>
-          <div className="space-y-2">
+        <div className="mt-5 rounded-xl border border-white/10 bg-ink p-5">
+          <p className="eyebrow mb-3 text-paper/45">What goes in the report</p>
+          <ul className="space-y-2">
             {evidencePoints.map((point, index) => (
-              <p key={index} className="text-sm text-gray-300 leading-relaxed">{point}</p>
+              <li key={index} className="flex gap-2 text-sm leading-relaxed text-paper/75">
+                <span className="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-paper/40" />
+                {point}
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
 
       <AnimatePresence>
         {cert && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
-          >
-            <div className={`rounded-2xl border p-5 ${
-              isFake ? "bg-red-500/5 border-red-500/20" : isUncertain ? "bg-amber-500/5 border-amber-500/20" : "bg-green-500/5 border-green-500/20"
-            }`}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-5 space-y-4">
+            <div
+              className={`rounded-xl border p-5 ${
+                isFake ? "border-alert/30 bg-alert/10" : isUncertain ? "border-caution/30 bg-caution/10" : "border-signal/30 bg-signal/10"
+              }`}
+            >
               <div className="flex items-start gap-3">
-                {isFake
-                  ? <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                  : isUncertain
-                    ? <HelpCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-                    : <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                }
-                <p className="text-sm text-gray-300 leading-relaxed">{cert.summary}</p>
+                {isFake ? (
+                  <XCircle className="mt-0.5 h-5 w-5 flex-none text-alert" />
+                ) : isUncertain ? (
+                  <HelpCircle className="mt-0.5 h-5 w-5 flex-none text-caution" />
+                ) : (
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 flex-none text-signal" />
+                )}
+                <p className="text-sm leading-relaxed text-paper/85">{cert.summary}</p>
               </div>
             </div>
 
-            <div className="bg-black/30 border border-white/10 rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Lock className="w-4 h-4 text-blue-400" />
-                <span className="text-sm font-bold text-blue-400 uppercase tracking-wider">Digital Certificate</span>
-                <span className="ml-auto text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full">
-                  Verified
-                </span>
+            <div className="rounded-xl border border-white/10 bg-ink p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <Lock className="h-4 w-4 text-paper/60" />
+                <span className="eyebrow text-paper/70">Digital certificate</span>
+                <span className="eyebrow ml-auto rounded bg-signal/15 px-2 py-1 text-[0.62rem] text-signal">Signed</span>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-3 text-sm">
-                <CertRow icon={<Hash className="w-3.5 h-3.5" />} label="Certificate ID" value={cert.certificate_id.split("-")[0] + "..."} mono />
-                <CertRow icon={<Calendar className="w-3.5 h-3.5" />} label="Issued At" value={cert.issued_at.slice(0, 19).replace("T", " ") + " UTC"} />
-                <CertRow icon={<Shield className="w-3.5 h-3.5" />} label="Algorithm" value={cert.algorithm} />
-                <CertRow icon={<FileText className="w-3.5 h-3.5" />} label="File" value={cert.filename} />
-                <CertRow
-                  icon={<Hash className="w-3.5 h-3.5" />}
-                  label="File Hash (SHA-256)"
-                  value={cert.file_hash.slice(0, 24) + "..."}
-                  mono
-                  full
-                />
-                <CertRow
-                  icon={<Lock className="w-3.5 h-3.5" />}
-                  label="Digital Signature"
-                  value={cert.signature.slice(0, 24) + "..."}
-                  mono
-                  full
-                />
+              <div className="grid gap-3 text-sm md:grid-cols-2">
+                <CertRow icon={<Hash className="h-3.5 w-3.5" />} label="Certificate ID" value={cert.certificate_id.split("-")[0] + "…"} mono />
+                <CertRow icon={<Calendar className="h-3.5 w-3.5" />} label="Issued" value={cert.issued_at.slice(0, 19).replace("T", " ") + " UTC"} />
+                <CertRow icon={<Shield className="h-3.5 w-3.5" />} label="Algorithm" value={cert.algorithm} />
+                <CertRow icon={<FileText className="h-3.5 w-3.5" />} label="File" value={cert.filename} />
+                <CertRow icon={<Hash className="h-3.5 w-3.5" />} label="Report hash (SHA-256)" value={cert.file_hash.slice(0, 24) + "…"} mono full />
+                <CertRow icon={<Lock className="h-3.5 w-3.5" />} label="Signature" value={cert.signature.slice(0, 24) + "…"} mono full />
               </div>
 
-              <div className="mt-4 pt-4 border-t border-white/5 text-xs text-gray-500">
-                <p>Issuer: <span className="text-gray-400">{cert.issuer}</span></p>
-                <p className="mt-1">
-                  This certificate is tied to the stored analysis payload with an Ed25519 digital signature.
-                  Any modification to the underlying analysis data invalidates the digital signature.
-                </p>
-              </div>
+              <p className="mt-4 border-t border-white/5 pt-4 text-xs text-paper/45">
+                Issued by <span className="text-paper/70">{cert.issuer}</span>. The signature covers the saved analysis results;
+                changing any of them invalidates it.
+              </p>
             </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={generateReport}
-                disabled={loading}
-                className="flex-1 bg-white/5 border border-white/10 text-gray-400 py-2.5 rounded-xl text-sm hover:bg-white/10 transition-colors"
-              >
-                Regenerate Report
+            <div className="flex flex-wrap gap-3">
+              <button onClick={generateReport} disabled={loading} className="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-paper/70 hover:bg-white/5">
+                Regenerate
               </button>
-              <button
-                onClick={downloadPDF}
-                disabled={pdfLoading}
-                className="flex-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 font-bold py-2.5 rounded-xl text-sm hover:bg-blue-500/20 transition-colors flex items-center justify-center gap-2"
-              >
-                {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                Download PDF Report
-              </button>
+              {reportId && (
+                <>
+                  <Link href={`/dashboard/history?reportId=${reportId}`} className="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-paper hover:bg-white/5">
+                    Open in reports
+                  </Link>
+                  <Link href={`/dashboard/complaint?reportId=${reportId}`} className="rounded-xl border border-alert/30 bg-alert/10 px-4 py-2.5 text-sm font-semibold text-alert hover:bg-alert/15">
+                    Use for a complaint
+                  </Link>
+                </>
+              )}
             </div>
-
-            {reportId && (
-              <div className="grid md:grid-cols-2 gap-3">
-                <Link
-                  href={`/dashboard/history?reportId=${reportId}`}
-                  className="text-center bg-white/5 border border-white/10 text-gray-200 py-2.5 rounded-xl text-sm hover:bg-white/10 transition-colors"
-                >
-                  Open In Report History
-                </Link>
-                <Link
-                  href={`/dashboard/complaint?reportId=${reportId}`}
-                  className="text-center bg-red-500/10 border border-red-500/20 text-red-300 py-2.5 rounded-xl text-sm hover:bg-red-500/15 transition-colors"
-                >
-                  Use This Report For Complaint
-                </Link>
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </section>
   );
 }
 
@@ -350,13 +307,11 @@ function CertRow({
 }) {
   return (
     <div className={full ? "md:col-span-2" : ""}>
-      <div className="flex items-center gap-1.5 text-gray-500 mb-1">
+      <div className="mb-1 flex items-center gap-1.5 text-paper/45">
         {icon}
         <span className="text-[10px] uppercase tracking-wider">{label}</span>
       </div>
-      <p className={`text-gray-200 text-xs truncate ${mono ? "font-mono bg-black/20 px-2 py-1 rounded" : ""}`}>
-        {value}
-      </p>
+      <p className={`truncate text-xs text-paper/85 ${mono ? "rounded bg-white/5 px-2 py-1 font-mono" : ""}`}>{value}</p>
     </div>
   );
 }
