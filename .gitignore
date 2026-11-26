@@ -1,5 +1,8 @@
 # Python
 __pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 *.py[cod]
 *.egg-info/
 venv/
@@ -13,8 +16,10 @@ backend/model_cache/
 *.safetensors
 
 # Environment secrets
-backend/.env
-frontend/.env.local
+.env
+.env.local
+.env.*.local
+!.env.example
 
 # Temp / uploads
 backend/tmp/
@@ -29,8 +34,17 @@ backend/generated_reports/*.pem
 backend/generated_complaints/*.json
 backend/generated_complaints/*.pdf
 backend/generated_complaints/*.pem
-ba
 backend/generated_complaints/
+
+# Private keys anywhere (Ed25519 report-signing key must never be committed)
+*.pem
+*.key
+
+# Audio uploads saved by the backend
+backend/audio/uploads/
+
+# Benchmark / evaluation output
+benchmarks/
 # OS
 .DS_Store
 Thumbs.db
@@ -48,3 +62,13 @@ manipulation_workflow.md
 
 # Logs
 *.log
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Stray lockfile from running npm at the repo root (the app lives in frontend/)
+/package-lock.json
