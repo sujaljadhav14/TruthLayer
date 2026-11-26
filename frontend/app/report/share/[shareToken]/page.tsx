@@ -96,7 +96,7 @@ export default function SharedReportPage() {
     <div className="min-h-screen bg-[#050505] text-white px-6 py-12">
       <div className="max-w-5xl mx-auto">
         <div className="mb-8">
-          <p className="text-xs uppercase tracking-[0.2em] text-green-400 mb-3">TruthLens Shared Report</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-green-400 mb-3">TruthLayer Shared Report</p>
           <h1 className="text-3xl font-bold">Forensic Report Preview</h1>
         </div>
 
