@@ -1,15 +1,19 @@
-import Navbar from '@/components/Navbar';
-import Hero from '@/components/Hero';
-import HowItWorks from '@/components/HowItWorks';
-import Footer from '@/components/Footer';
+import SiteNav from "@/components/landing/SiteNav";
+import Story from "@/components/landing/Story";
+import SampleReport from "@/components/landing/SampleReport";
+import WhatWeCheck from "@/components/landing/WhatWeCheck";
+import Faq from "@/components/landing/Faq";
+import FinalCta from "@/components/landing/FinalCta";
 
 export default function Home() {
   return (
-    <main className="bg-[#050505] text-white min-h-screen font-sans selection:bg-green-500/30">
-      <Navbar />
-      <Hero />
-      <HowItWorks />
-      <Footer />
+    <main className="min-h-screen bg-ink font-sans selection:bg-caution/60">
+      <SiteNav />
+      <Story />
+      <SampleReport />
+      <WhatWeCheck />
+      <Faq />
+      <FinalCta />
     </main>
   );
 }
