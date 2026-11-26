@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
   const pdfBytes = await res.arrayBuffer();
   const cert = res.headers.get("Content-Disposition") ?? "";
-  const filename = cert.match(/filename="(.+?)"/)?.[1] ?? "truthlens_report.pdf";
+  const filename = cert.match(/filename="(.+?)"/)?.[1] ?? "truthlayer_report.pdf";
 
   return new NextResponse(pdfBytes, {
     status: 200,

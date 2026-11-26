@@ -1,12 +1,104 @@
 @import "tailwindcss";
 
+/* ===== TruthLayer design tokens (editorial look, see CLAUDE.md) ===== */
+@theme inline {
+  --color-ink: #0c0f0d;
+  --color-ink-2: #151a17;
+  --color-ink-3: #1f2621;
+  --color-paper: #f2ede2;
+  --color-paper-2: #e8e1d2;
+  --color-signal: #2bd46b;
+  --color-signal-deep: #17a34f;
+  --color-alert: #ff4b3e;
+  --color-caution: #ffb020;
+
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
 html {
   scroll-behavior: smooth;
 }
 
 body {
-  background-color: #050505;
+  background-color: var(--color-ink);
   color: #ffffff;
+}
+
+/* Numbered section label: "01  DEEPFAKE FORENSICS" */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Heavy display headline with tight leading */
+.display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+}
+
+/* Halftone dot texture. Set --dot (colour) and --dot-size on the element. */
+.halftone {
+  background-image: radial-gradient(var(--dot, rgb(0 0 0 / 0.22)) 1.1px, transparent 1.4px);
+  background-size: var(--dot-size, 7px) var(--dot-size, 7px);
+}
+
+/* Chunky button with a hard offset shadow */
+.btn-chunky {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 2px solid var(--color-ink);
+  border-radius: 0.6rem;
+  padding: 0.8rem 1.35rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 4px 4px 0 0 var(--color-ink);
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+.btn-chunky:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 6px 0 0 var(--color-ink);
+}
+.btn-chunky:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 0 var(--color-ink);
+}
+.btn-chunky:focus-visible {
+  outline: 3px solid var(--color-caution);
+  outline-offset: 3px;
+}
+
+/* Card on light (paper) sections */
+.paper-card {
+  background: #fffdf8;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 1rem;
+  box-shadow: 6px 6px 0 0 var(--color-ink);
+}
+
+/* Landing illustration scan line */
+@keyframes tl-scan {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(312px); }
+}
+.tl-scan {
+  animation: tl-scan 4.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ===== Hide Clerk "Development mode" banner ===== */

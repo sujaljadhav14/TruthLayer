@@ -10,6 +10,7 @@ import {
   Shield,
   CheckCircle2,
   XCircle,
+  HelpCircle,
   Loader2,
   Hash,
   Lock,
@@ -77,6 +78,7 @@ export default function ForensicReport({ analysisData, audioData, heatmapData }:
   const [error, setError] = useState<string | null>(null);
 
   const isFake = analysisData.verdict === "FAKE";
+  const isUncertain = analysisData.verdict !== "FAKE" && analysisData.verdict !== "REAL";
 
   const evidencePoints = useMemo(() => {
     const items: string[] = [];
@@ -170,7 +172,7 @@ export default function ForensicReport({ analysisData, audioData, heatmapData }:
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `truthlens_report_${analysisData.filename?.split(".")[0] ?? "analysis"}.pdf`;
+      a.download = `truthlayer_report_${analysisData.filename?.split(".")[0] ?? "analysis"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -240,12 +242,14 @@ export default function ForensicReport({ analysisData, audioData, heatmapData }:
             className="space-y-4"
           >
             <div className={`rounded-2xl border p-5 ${
-              isFake ? "bg-red-500/5 border-red-500/20" : "bg-green-500/5 border-green-500/20"
+              isFake ? "bg-red-500/5 border-red-500/20" : isUncertain ? "bg-amber-500/5 border-amber-500/20" : "bg-green-500/5 border-green-500/20"
             }`}>
               <div className="flex items-start gap-3">
                 {isFake
                   ? <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                  : <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  : isUncertain
+                    ? <HelpCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                    : <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
                 }
                 <p className="text-sm text-gray-300 leading-relaxed">{cert.summary}</p>
               </div>

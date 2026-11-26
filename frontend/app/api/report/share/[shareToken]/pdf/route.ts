@@ -20,7 +20,7 @@ export async function GET(
 
     const pdfBytes = await res.arrayBuffer();
     const disposition = res.headers.get("Content-Disposition") ?? "";
-    const filename = disposition.match(/filename="(.+?)"/)?.[1] ?? "truthlens_shared_report.pdf";
+    const filename = disposition.match(/filename="(.+?)"/)?.[1] ?? "truthlayer_shared_report.pdf";
 
     return new NextResponse(pdfBytes, {
       status: 200,

@@ -7,9 +7,9 @@ echo.
 cd /d "%~dp0"
 
 echo [1/3] Creating Python virtual environment...
-python -m venv venv
+py -3.12 -m venv venv
 if errorlevel 1 (
-    echo ERROR: Python not found. Install Python 3.10+ from python.org
+    echo ERROR: Python 3.12 not found. Install Python 3.12 and make sure the py launcher can see it.
     pause
     exit /b 1
 )

@@ -145,7 +145,7 @@ def generate_certificate(
         "algorithm": "Ed25519",
         "public_key_path": str(PUBLIC_KEY_PATH),
         "summary": _build_summary(analysis_data, audio_data=audio_data, heatmap_data=heatmap_data),
-        "issuer": "TruthLens Forensic AI - HackVerse 2025",
+        "issuer": "TruthLayer Forensic AI - Hackverse 2026",
     }
 
 

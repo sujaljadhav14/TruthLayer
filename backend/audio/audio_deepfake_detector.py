@@ -93,11 +93,18 @@ FREQ_WEIGHTS = {
 }
 
 # Override: HF energy + CPP both strong -> force FAKE
-HF_OVERRIDE_THRESHOLD  = 0.70
-CPP_OVERRIDE_THRESHOLD = 0.55
-OVERRIDE_FAKE_SCORE    = 0.80
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, default))
+    except (TypeError, ValueError):
+        return default
 
-CONFIDENCE_THRESHOLD = 0.52
+
+HF_OVERRIDE_THRESHOLD  = _env_float("TRUTHLENS_HF_OVERRIDE_THRESHOLD", 0.70)
+CPP_OVERRIDE_THRESHOLD = _env_float("TRUTHLENS_CPP_OVERRIDE_THRESHOLD", 0.55)
+OVERRIDE_FAKE_SCORE    = _env_float("TRUTHLENS_OVERRIDE_FAKE_SCORE", 0.80)
+
+CONFIDENCE_THRESHOLD = _env_float("TRUTHLENS_CONFIDENCE_THRESHOLD", 0.52)
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -265,6 +272,88 @@ def extract_speech_segments(audio: np.ndarray, sr: int) -> dict:
         "speech_audio": speech_audio,
         "non_speech_audio": non_speech_audio,
         "speech_ratio": len(speech_audio) / (len(audio) + 1),
+    }
+
+
+def build_speech_track(audio: np.ndarray, segments: list, seg_sr: int, audio_sr: int) -> tuple:
+    """Concatenate the speech segments of `audio` into one track for ML scoring.
+
+    `segments` are (start, end) sample indices at `seg_sr`; `audio` is at
+    `audio_sr`. Returns (speech_track, spans) where each span is
+    (track_start_sec, original_start_sec, duration_sec) so chunk times on the
+    track can be mapped back onto the original file.
+    """
+    ratio = audio_sr / seg_sr
+    parts, spans, cursor = [], [], 0.0
+    for start, end in segments:
+        s = int(start * ratio)
+        e = min(int(end * ratio), len(audio))
+        if e <= s:
+            continue
+        parts.append(audio[s:e])
+        dur = (e - s) / audio_sr
+        spans.append((cursor, s / audio_sr, dur))
+        cursor += dur
+    if not parts:
+        return np.array([], dtype=np.float32), []
+    return np.concatenate(parts).astype(np.float32), spans
+
+
+def speech_time_to_original(t: float, spans: list) -> float:
+    """Map a time on the concatenated speech track back to the original file."""
+    if not spans:
+        return t
+    for track_start, orig_start, dur in spans:
+        if t <= track_start + dur:
+            return orig_start + max(0.0, t - track_start)
+    # Past the end (e.g. a zero-padded final chunk): clamp to the last speech end
+    _, orig_start, dur = spans[-1]
+    return orig_start + dur
+
+
+def remap_chunk_times(chunks: list, spans: list) -> list:
+    """Return chunk_details with start/end moved onto the original timeline."""
+    out = []
+    for cd in chunks:
+        mapped = dict(cd)
+        mapped["start"] = round(speech_time_to_original(cd["start"], spans), 2)
+        mapped["end"] = round(speech_time_to_original(cd["end"], spans), 2)
+        out.append(mapped)
+    return out
+
+
+def summarize_speech_segments(segments: list, audio_len: int, sr: int, preview_limit: int = 50) -> dict:
+    """Summarize speech activity into a compact structure for UI display.
+
+    This gives the frontend enough information to show where the person is
+    speaking in a long clip without needing a separate dataset or retraining.
+    """
+    duration_sec = audio_len / sr if sr else 0.0
+    total_speech_sec = 0.0
+    longest_segment_sec = 0.0
+    speech_regions = []
+
+    for start, end in segments:
+        start_sec = round(start / sr, 3) if sr else 0.0
+        end_sec = round(end / sr, 3) if sr else 0.0
+        seg_sec = max(0.0, end_sec - start_sec)
+        total_speech_sec += seg_sec
+        longest_segment_sec = max(longest_segment_sec, seg_sec)
+        speech_regions.append({
+            "start_sec": start_sec,
+            "end_sec": end_sec,
+            "duration_sec": round(seg_sec, 3),
+        })
+
+    speech_ratio = total_speech_sec / duration_sec if duration_sec > 0 else 0.0
+    return {
+        "speech_segments": speech_regions[:preview_limit],
+        "speech_segments_count": len(speech_regions),
+        "speech_ratio": round(speech_ratio, 4),
+        "silence_ratio": round(max(0.0, 1.0 - speech_ratio), 4),
+        "speech_seconds": round(total_speech_sec, 3),
+        "longest_speech_seconds": round(longest_segment_sec, 3),
+        "audio_seconds": round(duration_sec, 3),
     }
 
 
@@ -1079,39 +1168,57 @@ def ensemble(ml_a, ml_b, fs, override, has_b) -> dict:
     return {"fake": fake, "real": 1.0 - fake}
 
 
+VERDICT_TEXT = {
+    "fake": "AI-GENERATED",
+    "real": "AUTHENTIC",
+    "uncertain": "UNCERTAIN",
+}
+
+
 def build_verdict(scores, signals, override, fv, rv, ml_a, tool):
+    """Decide the label and return (label, confidence, verdict, warning, reason).
+
+    When the HF+CPP override fires, the final fake probability is lifted to at
+    least OVERRIDE_FAKE_SCORE (mutating `scores`) so the percentage shown to the
+    user always agrees with the FAKE label.
+    """
+    if override and scores["fake"] < OVERRIDE_FAKE_SCORE:
+        scores["fake"] = OVERRIDE_FAKE_SCORE
+        scores["real"] = 1.0 - OVERRIDE_FAKE_SCORE
+        scores["total"] = round(OVERRIDE_FAKE_SCORE, 4)
+        scores["override_applied"] = True
+
     fp   = scores["fake"]
     conf = max(fp, 1.0 - fp)
+    reason = ""
 
     if override:
-        verdict = "FAKE / AI GENERATED [X]  [HF+CPP override]"
-        label   = "fake"
+        label  = "fake"
+        reason = "artifact_override"
     elif conf < CONFIDENCE_THRESHOLD:
-        verdict = "UNCERTAIN [?]"
-        label   = "uncertain"
+        label = "uncertain"
     elif fp >= 0.5:
-        verdict = "FAKE / AI GENERATED [X]"
-        label   = "fake"
+        label = "fake"
     else:
-        verdict = "AUTHENTIC [OK]"
-        label   = "real"
+        label = "real"
 
     if not override:
         if fv >= 5 and fp >= 0.5:
-            verdict = "FAKE / AI GENERATED [X]  [strong]"
-            label   = "fake"
+            label  = "fake"
+            reason = "strong_agreement"
         elif rv >= 6 and fp < 0.5:
-            verdict = "AUTHENTIC [OK]  [strong]"
-            label   = "real"
+            label  = "real"
+            reason = "strong_agreement"
 
     warning = ""
     if (not override and
             ml_a["fake_prob"] < 0.4 and
             sum(signals.values()) / len(signals) > 0.5):
-        warning = ("[!] ML missed this -- likely modern clone "
-                   f"({tool['top_tool']}) not in training data")
+        warning = ("The ML models scored this as real, but the frequency signals "
+                   "look synthetic. It may come from a newer voice-cloning tool "
+                   f"({tool['top_tool']}) the models were not trained on.")
 
-    return label, round(conf, 4), verdict, warning
+    return label, round(conf, 4), VERDICT_TEXT[label], warning, reason
 
 
 # ==============================================
@@ -1164,6 +1271,7 @@ class DeepfakeDetector:
         print(f"\n  [STEP 2] Voice Activity Detection...")
         vad_result = extract_speech_segments(audio_hq, TARGET_SR)
         speech_segments = vad_result["segments"]
+        speech_summary = summarize_speech_segments(speech_segments, len(audio_hq), TARGET_SR)
 
         # ── STEP 3: MFCC Feature Extraction ──
         print(f"\n  [STEP 3] MFCC Feature Extraction...")
@@ -1175,18 +1283,37 @@ class DeepfakeDetector:
         spkr_result = speaker_verification(speech_audio, TARGET_SR)
 
         # ── STEP 5: ML Deepfake Detection ──
-        print(f"\n  [STEP 5] ML Deepfake Detection...")
+        # The ML models only see detected speech, so long silences or music
+        # don't dilute their score. Speech segments are joined into one track,
+        # scored in overlapping 4 s chunks (short phrases get combined), and
+        # chunk times are mapped back onto the original file for the timeline.
+        # Frequency signals (step 6) still use the full file: noise_floor
+        # needs the silent parts and the thresholds were calibrated that way.
+        speech_track, spans = build_speech_track(
+            audio_ml, speech_segments, TARGET_SR, ML_SR)
+        if len(speech_track) >= ML_SR:  # at least 1 s of speech
+            ml_input, analysis_mode = speech_track, "speech_focused"
+        else:
+            ml_input, spans, analysis_mode = audio_ml, [], "full_audio"
+        print(f"\n  [STEP 5] ML Deepfake Detection ({analysis_mode}, "
+              f"{len(ml_input)/ML_SR:.1f}s)...")
+
         print("  [ML-A] XLS-R model...")
-        ml_a = score_ml(audio_ml, self.fe_a, self.model_a, ML_TEMP_A)
+        ml_a = score_ml(ml_input, self.fe_a, self.model_a, ML_TEMP_A)
         print(f"    fake={ml_a['fake_prob']*100:.1f}%  "
               f"[{ml_a['fake_chunks']}/{ml_a['total_chunks']} chunks]")
 
         ml_b = None
         if self._has_b:
             print("  [ML-B] Wav2Vec2 model...")
-            ml_b = score_ml(audio_ml, self.fe_b, self.model_b, ML_TEMP_B)
+            ml_b = score_ml(ml_input, self.fe_b, self.model_b, ML_TEMP_B)
             print(f"    fake={ml_b['fake_prob']*100:.1f}%  "
                   f"[{ml_b['fake_chunks']}/{ml_b['total_chunks']} chunks]")
+
+        if spans:
+            ml_a["chunk_details"] = remap_chunk_times(ml_a["chunk_details"], spans)
+            if ml_b:
+                ml_b["chunk_details"] = remap_chunk_times(ml_b["chunk_details"], spans)
 
         # Deepfake model score: combine ML models
         deepfake_ml = ml_a["fake_prob"]
@@ -1241,7 +1368,7 @@ class DeepfakeDetector:
               f"({tool['confidence']*100:.1f}%)")
 
         # ── Verdict ──
-        label, conf, verdict, warning = build_verdict(
+        label, conf, verdict, warning, verdict_reason = build_verdict(
             scores, signals, override, fv, rv, ml_a, tool
         )
 
@@ -1270,11 +1397,18 @@ class DeepfakeDetector:
             "signals":        {k: {"value": round(v, 4), "score": round(v, 4), "vote": "fake" if v > 0.55 else "real" if v < 0.45 else "uncertain"} for k, v in signals.items()},
             "freq_votes":     {"fake": fv, "real": rv, "uncertain": 8 - fv - rv},
             "warning":        warning,
+            "verdict_reason": verdict_reason,
+            "analysis_mode":  analysis_mode,
             # New pipeline data
             "authenticity_score": scores,
             "vad": {
                 "segments": len(speech_segments),
                 "speech_ratio": round(vad_result["speech_ratio"], 4),
+                "silence_ratio": speech_summary["silence_ratio"],
+                "speech_seconds": speech_summary["speech_seconds"],
+                "longest_speech_seconds": speech_summary["longest_speech_seconds"],
+                "speech_segments": speech_summary["speech_segments"],
+                "speech_segments_count": speech_summary["speech_segments_count"],
             },
             "mfcc": {
                 "regularity_score": mfcc_features.get("mfcc_regularity_score", 0),

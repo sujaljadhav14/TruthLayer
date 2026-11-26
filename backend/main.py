@@ -1,5 +1,5 @@
 """
-TruthLens — Unified DeepFake Detection API (Video + Audio)
+TruthLayer — Unified DeepFake Detection API (Video + Audio)
 FastAPI server combining ResNext50+LSTM video detector and audio deepfake detector.
 
 Run:
@@ -66,7 +66,7 @@ WEIGHTS_FILE = "model_87_acc_20_frames_final_data.pt"
 AUDIO_UPLOAD_DIR = BACKEND_DIR / "audio" / "uploads"
 AUDIO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title="TruthLens DeepFake Detection API")
+app = FastAPI(title="TruthLayer DeepFake Detection API")
 
 app.add_middleware(
     CORSMiddleware,

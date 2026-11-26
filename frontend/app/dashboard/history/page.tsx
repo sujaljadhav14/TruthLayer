@@ -157,7 +157,7 @@ export default function HistoryPage() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `${selectedReport?.analysis.filename?.split(".")[0] ?? "truthlens_report"}.pdf`;
+      anchor.download = `${selectedReport?.analysis.filename?.split(".")[0] ?? "truthlayer_report"}.pdf`;
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (err) {
