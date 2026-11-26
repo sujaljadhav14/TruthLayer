@@ -18,13 +18,10 @@ Project context and rules live in [`../CLAUDE.md`](../CLAUDE.md).
 
 ## In progress
 
-- [ ] **Finish the redesign on the remaining pages** (same tokens/patterns as the landing + analyze pages):
-  history (`app/dashboard/history`), complaint, shared report (`app/report/share/...`), sign-in / sign-up,
-  and the video heatmap panel (`components/HeatmapTimeline.tsx`) + `ForensicReport.tsx`, which still use
-  the old grey `#111` card style.
-- [ ] **Check the dashboard end-to-end with a real session.** The new analyze/home pages were type-checked,
-  linted and their result components were checked visually with sample data, but not yet with a signed-in
-  user and the backend + models running.
+- [ ] **Check the app end-to-end with a real session.** All pages were type-checked, linted and looked at
+  with mocked data, but not yet with a signed-in user and the backend + models running.
+- [ ] Claim the Clerk keys and set the app name to "TruthLayer" in the Clerk dashboard (keyless mode shows
+  "Sign in to My Application").
 
 ## Next up (priority order)
 
@@ -54,6 +51,16 @@ Project context and rules live in [`../CLAUDE.md`](../CLAUDE.md).
 
 ## Done
 
+- [x] **Redesign finished on the remaining views** (2026-11-26): reports history, complaint assistant,
+      shared report (now a printed-style evidence document), sign-in / sign-up (shared `AuthShell`),
+      heatmap panel and the save-report panel. Removed ~360 lines of old auth CSS, including a global
+      `button:active` rule that overrode button styles everywhere.
+- [x] Complaint emails no longer fall back to a hard-coded personal inbox when no authority email is
+      entered; the draft button stays disabled until one is added. (2026-11-26)
+- [x] Fixed two-column layouts on reports + complaint pages (`grid-cols-[a,b]` is invalid Tailwind,
+      needs `_`). Uncertain reports get their own amber state everywhere. "File hash" relabelled
+      "Report hash" (it hashes the report payload, not the media). Removed false claims from the auth
+      pages (99.2% accuracy, court-admissible, end-to-end encrypted, image scans). (2026-11-26)
 - [x] **UI redesign, Vigil-inspired** (reference https://getvigil.in) (2026-11-26):
       design tokens + fonts (Archivo / Inter / JetBrains Mono); landing rebuilt as a scroll story with a
       pinned "evidence exhibit" illustration (`components/landing/*`), honest sample report, "what we check"
@@ -86,6 +93,7 @@ Project context and rules live in [`../CLAUDE.md`](../CLAUDE.md).
   speech, 8-segment cap, Model B dropped, unordered timeline, noise-floor on speech-only audio) and the
   verdict/score contradiction. Added CLAUDE.md + ROADMAP.md, new tests, CI rewrite, .gitignore cleanup.
   Then the Vigil-inspired UI redesign: new landing page, verdict summary on results, dashboard restyle,
-  report fixes (confidence scale, uncertain state, branding). Merged both into `main`.
+  report fixes (confidence scale, uncertain state, branding). Merged both into `main`, then rebuilt the
+  history as 12 medium-sized commits. Restyled the remaining views on `feature/dashboard-restyle`.
 - **2026-05-03** — VS Code agent: speech-focused audio mode, speech regions UI, scripts, CI, SKILL.md.
 - **2026-03-14** — README rewrite + screenshots.
