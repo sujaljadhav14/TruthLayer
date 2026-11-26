@@ -51,6 +51,8 @@ Project context and rules live in [`../CLAUDE.md`](../CLAUDE.md).
 
 ## Done
 
+- [x] `backend/.env` untracked; the HF token that was committed earlier has been revoked. Each dev keeps
+      their own `backend/.env` (template: `backend/.env.example`). (2026-11-26)
 - [x] **Redesign finished on the remaining views** (2026-11-26): reports history, complaint assistant,
       shared report (now a printed-style evidence document), sign-in / sign-up (shared `AuthShell`),
       heatmap panel and the save-report panel. Removed ~360 lines of old auth CSS, including a global
@@ -94,6 +96,6 @@ Project context and rules live in [`../CLAUDE.md`](../CLAUDE.md).
   verdict/score contradiction. Added CLAUDE.md + ROADMAP.md, new tests, CI rewrite, .gitignore cleanup.
   Then the Vigil-inspired UI redesign: new landing page, verdict summary on results, dashboard restyle,
   report fixes (confidence scale, uncertain state, branding). Merged both into `main`, then rebuilt the
-  history as 12 medium-sized commits. Restyled the remaining views on `feature/dashboard-restyle`.
+  history as 12 medium-sized commits. Restyled the remaining views (PR #1, first PR through CI), then untracked `backend/.env` (PR #2).
 - **2026-05-03** — VS Code agent: speech-focused audio mode, speech regions UI, scripts, CI, SKILL.md.
 - **2026-03-14** — README rewrite + screenshots.
