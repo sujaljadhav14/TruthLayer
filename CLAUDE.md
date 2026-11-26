@@ -96,9 +96,10 @@ docs/ROADMAP.md              status, next tasks, changelog  ← keep updated
 - Work on a feature branch (`feature/<area>-<short>`), merge into `main`. Don't commit or push unless asked.
 - Commits: medium-sized, one topic each. Short human messages: a lowercase subject plus 1-2 plain lines
   saying what changed and why. **No `Co-Authored-By` / AI attribution lines.**
-- `backend/.env` is intentionally committed (private repo, team decision). Never make the repo public
-  without removing it and rotating `HF_TOKEN`.
-- The `gh` CLI isn't installed on the main dev machine; merges are done locally (`git merge --no-ff`).
+- `backend/.env` is **not** tracked (removed 2026-11-26 after the old HF token was revoked). Copy
+  `backend/.env.example` to `backend/.env` locally. Never commit real tokens.
+- `gh` is installed at `C:\Program Files\GitHub CLI\gh.exe` (logged in as sujaljadhav14). Open a PR for
+  each change and merge with `--merge` (not squash) so the commits stay visible. Repo auto-merge is off.
 
 ## Gotchas
 

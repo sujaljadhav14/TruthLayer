@@ -16,13 +16,11 @@ backend/model_cache/
 *.safetensors
 
 # Environment secrets
-# Note: `backend/.env` is intentionally allowed to be committed per user request
-# (private repo). If the repo ever goes public, remove it and rotate HF_TOKEN.
+# Secrets stay local. Copy backend/.env.example to backend/.env and fill it in.
 .env
 .env.local
 .env.*.local
 !.env.example
-!backend/.env
 
 # Temp / uploads
 backend/tmp/
