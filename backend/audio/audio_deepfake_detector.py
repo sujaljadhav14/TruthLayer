@@ -1168,39 +1168,57 @@ def ensemble(ml_a, ml_b, fs, override, has_b) -> dict:
     return {"fake": fake, "real": 1.0 - fake}
 
 
+VERDICT_TEXT = {
+    "fake": "AI-GENERATED",
+    "real": "AUTHENTIC",
+    "uncertain": "UNCERTAIN",
+}
+
+
 def build_verdict(scores, signals, override, fv, rv, ml_a, tool):
+    """Decide the label and return (label, confidence, verdict, warning, reason).
+
+    When the HF+CPP override fires, the final fake probability is lifted to at
+    least OVERRIDE_FAKE_SCORE (mutating `scores`) so the percentage shown to the
+    user always agrees with the FAKE label.
+    """
+    if override and scores["fake"] < OVERRIDE_FAKE_SCORE:
+        scores["fake"] = OVERRIDE_FAKE_SCORE
+        scores["real"] = 1.0 - OVERRIDE_FAKE_SCORE
+        scores["total"] = round(OVERRIDE_FAKE_SCORE, 4)
+        scores["override_applied"] = True
+
     fp   = scores["fake"]
     conf = max(fp, 1.0 - fp)
+    reason = ""
 
     if override:
-        verdict = "FAKE / AI GENERATED [X]  [HF+CPP override]"
-        label   = "fake"
+        label  = "fake"
+        reason = "artifact_override"
     elif conf < CONFIDENCE_THRESHOLD:
-        verdict = "UNCERTAIN [?]"
-        label   = "uncertain"
+        label = "uncertain"
     elif fp >= 0.5:
-        verdict = "FAKE / AI GENERATED [X]"
-        label   = "fake"
+        label = "fake"
     else:
-        verdict = "AUTHENTIC [OK]"
-        label   = "real"
+        label = "real"
 
     if not override:
         if fv >= 5 and fp >= 0.5:
-            verdict = "FAKE / AI GENERATED [X]  [strong]"
-            label   = "fake"
+            label  = "fake"
+            reason = "strong_agreement"
         elif rv >= 6 and fp < 0.5:
-            verdict = "AUTHENTIC [OK]  [strong]"
-            label   = "real"
+            label  = "real"
+            reason = "strong_agreement"
 
     warning = ""
     if (not override and
             ml_a["fake_prob"] < 0.4 and
             sum(signals.values()) / len(signals) > 0.5):
-        warning = ("[!] ML missed this -- likely modern clone "
-                   f"({tool['top_tool']}) not in training data")
+        warning = ("The ML models scored this as real, but the frequency signals "
+                   "look synthetic. It may come from a newer voice-cloning tool "
+                   f"({tool['top_tool']}) the models were not trained on.")
 
-    return label, round(conf, 4), verdict, warning
+    return label, round(conf, 4), VERDICT_TEXT[label], warning, reason
 
 
 # ==============================================
@@ -1350,7 +1368,7 @@ class DeepfakeDetector:
               f"({tool['confidence']*100:.1f}%)")
 
         # ── Verdict ──
-        label, conf, verdict, warning = build_verdict(
+        label, conf, verdict, warning, verdict_reason = build_verdict(
             scores, signals, override, fv, rv, ml_a, tool
         )
 
@@ -1379,6 +1397,7 @@ class DeepfakeDetector:
             "signals":        {k: {"value": round(v, 4), "score": round(v, 4), "vote": "fake" if v > 0.55 else "real" if v < 0.45 else "uncertain"} for k, v in signals.items()},
             "freq_votes":     {"fake": fv, "real": rv, "uncertain": 8 - fv - rv},
             "warning":        warning,
+            "verdict_reason": verdict_reason,
             "analysis_mode":  analysis_mode,
             # New pipeline data
             "authenticity_score": scores,
